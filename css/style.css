@@ -318,14 +318,6 @@ h2 {
 .rarity-VeryRare { border-left: 3px solid var(--c-veryrare); }
 .rarity-Legendary { border-left: 3px solid var(--c-legendary); box-shadow: 0 0 10px rgba(212,175,55,0.3); }
 
-.collection-quality {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  margin-bottom: 14px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
 .collection-group {
   margin-bottom: 18px;
 }
@@ -334,6 +326,12 @@ h2 {
   font-size: 0.85rem;
   color: var(--text-dim);
   margin-bottom: 6px;
+}
+
+.group-title .grade-poor, .group-title .grade-fair, .group-title .grade-good,
+.group-title .grade-vgood, .group-title .grade-fine, .group-title .grade-vfine,
+.group-title .grade-efine, .group-title .grade-unc, .group-title .grade-mint {
+  font-weight: 600;
 }
 
 .complete-badge {

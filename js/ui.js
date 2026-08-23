@@ -26,7 +26,6 @@ function renderAll() {
   renderCheckChange();
   renderUpgrades();
   renderTray();
-  renderCollectionQuality();
   renderCollection();
   flushToasts();
 }
@@ -185,27 +184,19 @@ function renderTray() {
   });
 }
 
-// The collection's quality is only as good as its worst coin -- shows the
-// current floor grade and the cash bonus for raising it further.
-function renderCollectionQuality() {
-  var container = document.getElementById("collection-quality");
-  if (!container) return;
-  var idx = collectionQualityIndex();
-  if (idx < 0) {
-    container.innerHTML = "";
-    return;
-  }
-  var claimed = state.collectionQualityBonusClaimed;
-  if (claimed === undefined) claimed = -1;
-  var html = "Collection quality: " + gradeSpan(GRADES[idx]);
+// Builds the "quality: <grade> · next tier +£X" line for one penny type's
+// section header -- that type's collection is only as good as its worst
+// coin, and each type ratchets its own bonus independently.
+function groupQualityHTML(groupId) {
+  var idx = collectionQualityIndexForGroup(groupId);
+  if (idx < 0) return "";
+  var html = " · quality " + gradeSpan(GRADES[idx]);
   if (idx < GRADES.length - 1) {
     var next = GRADES[idx + 1];
     var reward = COLLECTION_QUALITY_BONUS[idx + 1];
-    html += ' · replace your worst coin to reach ' + gradeSpan(next) + " for +" + formatMoney(reward);
-  } else {
-    html += " · every coin is Mint.";
+    html += ' (replace worst for ' + gradeSpan(next) + " +" + formatMoney(reward) + ")";
   }
-  container.innerHTML = html;
+  return html;
 }
 
 function renderCollection() {
@@ -220,7 +211,8 @@ function renderCollection() {
     section.className = "collection-group";
     var complete = ownedCount === coinsInGroup.length;
     section.innerHTML = '<div class="group-title">' + group.label + " (" + ownedCount + "/" + coinsInGroup.length + ")" +
-      (complete ? ' <span class="complete-badge">Complete</span>' : "") + "</div>";
+      (complete ? ' <span class="complete-badge">Complete</span>' : "") +
+      groupQualityHTML(group.id) + "</div>";
     var grid = document.createElement("div");
     grid.className = "collection-grid";
     coinsInGroup.forEach(function (coin) {

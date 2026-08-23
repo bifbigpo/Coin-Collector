@@ -1,4 +1,4 @@
-var SAVE_KEY = "coin_collector_save_v9";
+var SAVE_KEY = "coin_collector_save_v10";
 
 // A plain weighted pick with no rarity-luck multiplier -- used only for
 // the starting tray, which is built before `state` (and so any upgrades)
@@ -61,7 +61,7 @@ function defaultState() {
     },
     groupBonusesClaimed: {}, // groupId -> true
     fullCollectionBonusClaimed: false,
-    collectionQualityBonusClaimed: -1 // highest GRADE_INDEX tier already paid out
+    collectionQualityBonusClaimed: {} // groupId -> highest GRADE_INDEX tier already paid out for that type
   };
 }
 

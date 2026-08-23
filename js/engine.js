@@ -349,16 +349,22 @@ function keepAllNeeded() {
   toKeep.forEach(function (e) { keepCoin(e.uid); });
 }
 
-// One-off cash bonuses for raising the *floor* of the collection -- i.e.
-// upgrading the worst coin you own, not just adding new ones. Indexed to
-// GRADES: Poor 1, Fair 2, Good 3, Very Good 4, Fine 5, Very Fine 5,
-// Extremely Fine 10, Uncirculated 50, Mint 500 (pounds).
+// One-off cash bonuses for raising the *floor* of each individual penny-type
+// collection -- i.e. upgrading the worst coin you own within that type, not
+// just adding new ones. Indexed to GRADES: Poor 1, Fair 2, Good 3,
+// Very Good 4, Fine 5, Very Fine 5, Extremely Fine 10, Uncirculated 50,
+// Mint 500 (pounds). Each of the penny types tracks its own ratchet, so
+// e.g. maxing out your Victorian bun head coins pays out separately from
+// maxing out your George V coins.
 var COLLECTION_QUALITY_BONUS = [100, 200, 300, 400, 500, 500, 1000, 5000, 50000];
 
-// The collection's overall quality is only as good as its worst coin.
-// Returns a GRADE_INDEX, or -1 if nothing's been collected yet.
-function collectionQualityIndex() {
-  var coinIds = Object.keys(state.collection);
+// A single type-collection's quality is only as good as its worst coin.
+// Returns a GRADE_INDEX, or -1 if nothing from this group has been
+// collected yet.
+function collectionQualityIndexForGroup(groupId) {
+  var coinIds = Object.keys(state.collection).filter(function (id) {
+    return COINS_BY_ID[id].group === groupId;
+  });
   if (!coinIds.length) return -1;
   var min = GRADES.length - 1;
   coinIds.forEach(function (id) {
@@ -368,21 +374,24 @@ function collectionQualityIndex() {
   return min;
 }
 
-// One-time ratchet: pays out the bonus for every quality tier newly
-// reached as the collection's worst coin improves (via Keep or Replace).
+// One-time ratchet per penny type: pays out the bonus for every quality
+// tier newly reached as that type's worst coin improves (via Keep or
+// Replace).
 function checkCollectionQualityBonus() {
-  var idx = collectionQualityIndex();
-  if (idx < 0) return;
-  var claimed = state.collectionQualityBonusClaimed;
-  if (claimed === undefined) claimed = -1;
-  if (idx <= claimed) return;
-  var reward = 0;
-  for (var i = claimed + 1; i <= idx; i++) {
-    reward += COLLECTION_QUALITY_BONUS[i];
-  }
-  state.collectionQualityBonusClaimed = idx;
-  state.cash += reward;
-  queueToast("Collection quality now " + GRADES[idx].label + "! +" + formatMoney(reward) + " bonus.");
+  COIN_GROUPS.forEach(function (group) {
+    var idx = collectionQualityIndexForGroup(group.id);
+    if (idx < 0) return;
+    var claimed = state.collectionQualityBonusClaimed[group.id];
+    if (claimed === undefined) claimed = -1;
+    if (idx <= claimed) return;
+    var reward = 0;
+    for (var i = claimed + 1; i <= idx; i++) {
+      reward += COLLECTION_QUALITY_BONUS[i];
+    }
+    state.collectionQualityBonusClaimed[group.id] = idx;
+    state.cash += reward;
+    queueToast(group.label + " quality now " + GRADES[idx].label + "! +" + formatMoney(reward) + " bonus.");
+  });
 }
 
 function checkCollectionBonuses() {
