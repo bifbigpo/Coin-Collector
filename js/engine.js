@@ -4,11 +4,12 @@ var BASE_IDENTIFY_MS = 2000;
 var UNGRADED_SELL_MULT = 0.6; // what an ungraded coin fetches from a dealer -- a lowball
 
 var GRADES = [
-  { id: "poor", label: "Poor", mult: 0.3, weight: 35 },
-  { id: "fine", label: "Fine", mult: 0.6, weight: 35 },
-  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 20 },
-  { id: "efine", label: "Extremely Fine", mult: 1.6, weight: 8 },
-  { id: "unc", label: "Uncirculated", mult: 2.5, weight: 2 }
+  { id: "poor", label: "Poor", mult: 0.3, weight: 30 },
+  { id: "fair", label: "Fair", mult: 0.45, weight: 25 },
+  { id: "fine", label: "Fine", mult: 0.6, weight: 25 },
+  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 14 },
+  { id: "efine", label: "Extremely Fine", mult: 1.6, weight: 5 },
+  { id: "unc", label: "Uncirculated", mult: 2.5, weight: 1 }
 ];
 var GRADES_BY_ID = {};
 GRADES.forEach(function (g) { GRADES_BY_ID[g.id] = g; });
@@ -60,14 +61,17 @@ function sellMultiplier() {
   return appraiserFraction * groupMult * fullMult;
 }
 
-function rollGrade() {
-  var total = GRADES.reduce(function (s, g) { return s + g.weight; }, 0);
+function rollGrade(allowedGradeIds) {
+  var pool = allowedGradeIds
+    ? GRADES.filter(function (g) { return allowedGradeIds.indexOf(g.id) !== -1; })
+    : GRADES;
+  var total = pool.reduce(function (s, g) { return s + g.weight; }, 0);
   var r = Math.random() * total;
-  for (var i = 0; i < GRADES.length; i++) {
-    r -= GRADES[i].weight;
-    if (r <= 0) return GRADES[i].id;
+  for (var i = 0; i < pool.length; i++) {
+    r -= pool[i].weight;
+    if (r <= 0) return pool[i].id;
   }
-  return GRADES[GRADES.length - 1].id;
+  return pool[pool.length - 1].id;
 }
 
 function coinSellValue(entry) {
@@ -93,9 +97,14 @@ function weightedPick(pool) {
   return entries[entries.length - 1];
 }
 
+function lotCooldownRemaining(lotId) {
+  return Math.max(0, state.lotCooldowns[lotId] || 0);
+}
+
 function buyLot(lotId) {
   var lot = LOTS_BY_ID[lotId];
   if (!lot || !state.unlockedLots[lotId]) return false;
+  if (lot.cooldownMs && lotCooldownRemaining(lotId) > 0) return false;
   var cost = lotCost(lot);
   var count = lotCoinCount(lot);
   if (state.cash < cost) return false;
@@ -112,10 +121,12 @@ function buyLot(lotId) {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
-      grade: null
+      grade: null,
+      gradeCap: lot.gradeCap || null
     });
   }
   state.stats.lotsBought++;
+  if (lot.cooldownMs) state.lotCooldowns[lotId] = lot.cooldownMs;
   saveState();
   return true;
 }
@@ -241,7 +252,7 @@ function processIdentification() {
       if (e.remainingMs <= 0) {
         e.identifying = false;
         e.identified = true;
-        e.grade = rollGrade();
+        e.grade = rollGrade(e.gradeCap);
         state.stats.coinsSorted++;
       }
     }
@@ -274,6 +285,13 @@ function passiveIncomePerSecond() {
 
 function tick() {
   var changed = false;
+
+  Object.keys(state.lotCooldowns).forEach(function (id) {
+    if (state.lotCooldowns[id] > 0) {
+      state.lotCooldowns[id] = Math.max(0, state.lotCooldowns[id] - TICK_MS);
+      changed = true;
+    }
+  });
 
   if (processIdentification()) changed = true;
 

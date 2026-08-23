@@ -3,6 +3,10 @@
 // from and how heavily, and the pool is built from that at purchase time --
 // ordinary years in a type share its weight evenly, key dates get a small
 // slice scaled by how rare they really are.
+//
+// A typeWeights entry can be a plain number (the whole type, unrestricted)
+// or { weight, yearMin, yearMax } to draw only part of a type's year range
+// -- used by the decimal starter bag, which stops at 1990.
 
 var RARITY_POOL_MULTIPLIER = {
   Common: 1,
@@ -15,8 +19,16 @@ var RARITY_POOL_MULTIPLIER = {
 function buildLotPool(lot) {
   var pool = {};
   Object.keys(lot.typeWeights).forEach(function (typeId) {
-    var weight = lot.typeWeights[typeId];
-    COINS.filter(function (c) { return c.group === typeId; }).forEach(function (c) {
+    var spec = lot.typeWeights[typeId];
+    var weight = typeof spec === "number" ? spec : spec.weight;
+    var yearMin = typeof spec === "object" ? spec.yearMin : undefined;
+    var yearMax = typeof spec === "object" ? spec.yearMax : undefined;
+    COINS.filter(function (c) {
+      if (c.group !== typeId) return false;
+      if (yearMin !== undefined && c.year < yearMin) return false;
+      if (yearMax !== undefined && c.year > yearMax) return false;
+      return true;
+    }).forEach(function (c) {
       var mult = RARITY_POOL_MULTIPLIER[c.rarity] || 1;
       pool[c.id] = (pool[c.id] || 0) + weight * mult;
     });
@@ -24,17 +36,47 @@ function buildLotPool(lot) {
   return pool;
 }
 
+// Beginner bags only ever turn up well-worn coin -- no Extremely Fine or
+// Uncirculated surprises until you're buying from someone who sorts stock.
+var BEGINNER_GRADES = ["poor", "fair", "fine", "vfine"];
+
 var LOTS = [
   {
-    id: "charity_bag",
-    name: "Charity Shop Bag",
-    blurb: "50 assorted pennies from the local charity shop, sold by weight for a pound.",
+    id: "predecimal_bag",
+    name: "Pre-Decimal Charity Bag",
+    blurb: "A tin of old pre-decimal pennies from the local charity shop -- worn coppers nobody wanted after decimalisation.",
     unlockCost: 0,
     baseCost: 100,
     coinsPerLot: 50,
+    gradeCap: BEGINNER_GRADES,
     typeWeights: {
-      eii_decimal_steel: 45, eii_decimal_bronze: 25, eii_decimal_new: 10, charles_iii: 12,
-      eii_predecimal: 4, george_vi: 1
+      eii_predecimal: 30, george_vi: 25, george_v: 10, edward_vii: 4, victoria_veiled: 3, victoria_bun: 2
+    }
+  },
+  {
+    id: "decimal_bag",
+    name: "Decimal Charity Bag",
+    blurb: "A tin of early decimal pennies from the local charity shop -- nothing newer than 1990.",
+    unlockCost: 0,
+    baseCost: 100,
+    coinsPerLot: 50,
+    gradeCap: BEGINNER_GRADES,
+    typeWeights: {
+      eii_decimal_new: 60,
+      eii_decimal_bronze: { weight: 40, yearMax: 1990 }
+    }
+  },
+  {
+    id: "check_change",
+    name: "Check Your Change",
+    blurb: "Rifle through your own pocket change for modern coins. Free, but only one at a time.",
+    isFree: true,
+    unlockCost: 0,
+    baseCost: 0,
+    coinsPerLot: 1,
+    cooldownMs: 3000,
+    typeWeights: {
+      eii_decimal_steel: 70, charles_iii: 30
     }
   },
   {

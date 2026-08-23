@@ -23,6 +23,7 @@ function flushToasts() {
 function renderAll() {
   renderHeader();
   renderShop();
+  renderCheckChange();
   renderUpgrades();
   renderTray();
   renderCollection();
@@ -44,7 +45,7 @@ function renderHeader() {
 function renderShop() {
   var container = document.getElementById("lot-list");
   container.innerHTML = "";
-  LOTS.forEach(function (lot) {
+  LOTS.filter(function (lot) { return !lot.isFree; }).forEach(function (lot) {
     var unlocked = !!state.unlockedLots[lot.id];
     var card = document.createElement("div");
     card.className = "card lot-card" + (state.selectedLot === lot.id ? " selected" : "") + (unlocked ? "" : " locked");
@@ -71,6 +72,21 @@ function renderShop() {
     }
     container.appendChild(card);
   });
+}
+
+function renderCheckChange() {
+  var btn = document.getElementById("check-change-btn");
+  if (!btn) return;
+  var lot = LOTS_BY_ID["check_change"];
+  var remaining = lotCooldownRemaining("check_change");
+  if (remaining > 0) {
+    btn.textContent = "Check Your Change (" + Math.ceil(remaining / 1000) + "s)";
+    btn.disabled = true;
+  } else {
+    var full = state.tray.length + lotCoinCount(lot) > MAX_TRAY;
+    btn.textContent = "Check Your Change (Free)";
+    btn.disabled = full;
+  }
 }
 
 function renderUpgrades() {
