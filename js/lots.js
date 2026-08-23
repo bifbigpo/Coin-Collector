@@ -1,32 +1,32 @@
 // Bulk coin lots you can purchase. Each lot has an explicit weighted pool
-// of coin ids so early lots stay mundane and later lots open up the good stuff.
+// of coin ids so early lots stay mundane (modern loose change) and later,
+// pricier lots dig further back into pre-decimal and Victorian pennies.
 
 var LOTS = [
   {
     id: "jar",
     name: "Loose Change Jar",
-    blurb: "The coppers and silvers rattling around in everyone's kitchen drawer.",
+    blurb: "The coppers rattling around in everyone's kitchen drawer. Mostly modern.",
     unlockCost: 0,
     baseCost: 1500,
     coinsPerLot: 4,
     pool: {
-      p1_eii: 30, p2_eii: 25, p5_eii: 20, p10_eii: 15, p20_eii: 8, p50_eii: 4,
-      pound1_eii: 2, pound2_eii: 0.5,
-      p1_ciii: 3, p2_ciii: 2, p5_ciii: 1
+      eii_dec_one_penny_steel: 40, eii_dec_one_penny_bronze: 20, eii_dec_new_penny: 8,
+      ciii_penny: 10,
+      eii_pre_common: 3, geo6_common: 1
     }
   },
   {
     id: "bank_bag",
     name: "Bank Coin Bag",
-    blurb: "A sealed bag straight from the bank, mostly circulation coin.",
+    blurb: "A sealed bag straight from the bank, with a few old survivors mixed in.",
     unlockCost: 10000,
     baseCost: 6000,
     coinsPerLot: 6,
     pool: {
-      p1_eii: 20, p2_eii: 20, p5_eii: 18, p10_eii: 15, p20_eii: 12, p50_eii: 8,
-      pound1_eii: 6, pound2_eii: 2,
-      p1_ciii: 8, p2_ciii: 8, p5_ciii: 7, p10_ciii: 5, p20_ciii: 4, p50_ciii: 2,
-      pound1_ciii: 1, pound2_ciii: 0.5
+      eii_dec_one_penny_steel: 25, eii_dec_one_penny_bronze: 20, eii_dec_new_penny: 10,
+      ciii_penny: 8,
+      eii_pre_common: 10, geo6_common: 5, geo5_common: 1
     }
   },
   {
@@ -37,28 +37,27 @@ var LOTS = [
     baseCost: 22000,
     coinsPerLot: 8,
     pool: {
-      p1_eii: 10, p2_eii: 10, p5_eii: 10, p10_eii: 9, p20_eii: 8, p50_eii: 8,
-      pound1_eii: 6, pound2_eii: 3,
-      p1_ciii: 6, p2_ciii: 6, p5_ciii: 6, p10_ciii: 5, p20_ciii: 5, p50_ciii: 4,
-      pound1_ciii: 3, pound2_ciii: 1,
-      kew_gardens: 0.05, football_50p: 1, beatrix_potter_50p: 2, brexit_50p: 2.5, wwf_50p: 0.8
+      eii_dec_one_penny_steel: 8, eii_dec_one_penny_bronze: 8, eii_dec_new_penny: 5, ciii_penny: 3,
+      eii_pre_common: 15, eii_pre_1954: 0.02,
+      geo6_common: 12, geo6_1950: 0.6, geo6_1951: 0.3,
+      geo5_common: 8, geo5_1918h: 0.3, geo5_1919kn: 0.15, geo5_1933: 0.005,
+      edw7_common: 4, vic_veil_common: 2
     }
   },
   {
     id: "antique_lot",
     name: "Antique Dealer's Lot",
-    blurb: "A dealer's tray of curiosities, some of it genuinely old.",
+    blurb: "A dealer's tray of pre-decimal coppers, some of it genuinely old.",
     unlockCost: 120000,
     baseCost: 75000,
     coinsPerLot: 6,
     pool: {
-      p1_eii: 3, p2_eii: 3, p5_eii: 3, p10_eii: 3, p20_eii: 3, p50_eii: 3,
-      pound1_eii: 3, pound2_eii: 2,
-      p1_ciii: 2, p2_ciii: 2, p5_ciii: 2, p10_ciii: 2, p20_ciii: 2, p50_ciii: 2,
-      pound1_ciii: 2, pound2_ciii: 1.5,
-      kew_gardens: 0.1, football_50p: 2, beatrix_potter_50p: 3, brexit_50p: 3, wwf_50p: 1.5,
-      victorian_penny: 2, victorian_farthing: 2, edward_sixpence: 1.5,
-      george5_shilling: 2, george6_florin: 1.5, eliz_crown: 1
+      geo6_common: 6, geo6_1950: 1.5, geo6_1951: 1, geo6_1952: 0.01,
+      geo5_common: 6, geo5_1918h: 1, geo5_1919kn: 0.6, geo5_1933: 0.02,
+      edw7_common: 5, edw7_1902_lowtide: 0.8,
+      vic_veil_common: 5, vic_veil_1897_hightide: 0.6,
+      vic_bun_common: 4, vic_bun_1869: 0.4,
+      eii_pre_common: 3, eii_pre_1954: 0.03
     }
   },
   {
@@ -69,13 +68,13 @@ var LOTS = [
     baseCost: 250000,
     coinsPerLot: 10,
     pool: {
-      p1_eii: 1, p2_eii: 1, p5_eii: 1, p10_eii: 1, p20_eii: 1, p50_eii: 1,
-      pound1_eii: 1, pound2_eii: 1,
-      p1_ciii: 1, p2_ciii: 1, p5_ciii: 1, p10_ciii: 1, p20_ciii: 1, p50_ciii: 1,
-      pound1_ciii: 1, pound2_ciii: 1,
-      kew_gardens: 0.3, football_50p: 4, beatrix_potter_50p: 5, brexit_50p: 5, wwf_50p: 3,
-      victorian_penny: 4, victorian_farthing: 4, edward_sixpence: 3,
-      george5_shilling: 4, george6_florin: 3, eliz_crown: 2.5
+      vic_bun_common: 3, vic_bun_1869: 1,
+      vic_veil_common: 3, vic_veil_1897_hightide: 1.2,
+      edw7_common: 3, edw7_1902_lowtide: 1.2,
+      geo5_common: 3, geo5_1918h: 1.5, geo5_1919kn: 1, geo5_1933: 0.08,
+      geo6_common: 3, geo6_1950: 2, geo6_1951: 1.5, geo6_1952: 0.05,
+      eii_pre_common: 3, eii_pre_1954: 0.15,
+      eii_dec_new_penny: 1, eii_dec_one_penny_bronze: 1, eii_dec_one_penny_steel: 1, ciii_penny: 0.8
     }
   }
 ];
