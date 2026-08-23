@@ -82,12 +82,12 @@ var LOTS = [
     }
   },
   {
-    id: "bank_bag",
-    name: "Bank Coin Bag",
-    blurb: "A sealed bag straight from the bank, with a few old survivors mixed in.",
+    id: "ebay_bag",
+    name: "eBay Bulk Bag",
+    blurb: "\"100 x mixed pennies, unsearched!\" -- a bulk bag bought off eBay, with a few old survivors mixed in.",
     unlockCost: 400,
     baseCost: 500,
-    coinsPerLot: 35,
+    coinsPerLot: 100,
     typeWeights: {
       eii_decimal_steel: 25, eii_decimal_bronze: 18, eii_decimal_new: 8, charles_iii: 8,
       eii_predecimal: 14, george_vi: 8, george_v: 1

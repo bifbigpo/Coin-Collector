@@ -294,6 +294,7 @@ function keepCoin(uid) {
     state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
     state.stats.coinsKept++;
     checkCollectionBonuses();
+    checkCollectionQualityBonus();
   }
   removeTrayEntry(uid);
   saveState();
@@ -318,6 +319,7 @@ function replaceCoin(uid) {
   state.stats.coinsSold++;
   state.stats.cashEarnedFromSelling += oldValue;
   state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
+  checkCollectionQualityBonus();
   removeTrayEntry(uid);
   saveState();
 }
@@ -345,6 +347,42 @@ function keepAllNeeded() {
     return e.identified && isCoinGraded(e) && !state.collection[e.coinId];
   });
   toKeep.forEach(function (e) { keepCoin(e.uid); });
+}
+
+// One-off cash bonuses for raising the *floor* of the collection -- i.e.
+// upgrading the worst coin you own, not just adding new ones. Indexed to
+// GRADES: Poor 1, Fair 2, Good 3, Very Good 4, Fine 5, Very Fine 5,
+// Extremely Fine 10, Uncirculated 50, Mint 500 (pounds).
+var COLLECTION_QUALITY_BONUS = [100, 200, 300, 400, 500, 500, 1000, 5000, 50000];
+
+// The collection's overall quality is only as good as its worst coin.
+// Returns a GRADE_INDEX, or -1 if nothing's been collected yet.
+function collectionQualityIndex() {
+  var coinIds = Object.keys(state.collection);
+  if (!coinIds.length) return -1;
+  var min = GRADES.length - 1;
+  coinIds.forEach(function (id) {
+    var idx = GRADE_INDEX[state.collection[id].trueGrade];
+    if (idx < min) min = idx;
+  });
+  return min;
+}
+
+// One-time ratchet: pays out the bonus for every quality tier newly
+// reached as the collection's worst coin improves (via Keep or Replace).
+function checkCollectionQualityBonus() {
+  var idx = collectionQualityIndex();
+  if (idx < 0) return;
+  var claimed = state.collectionQualityBonusClaimed;
+  if (claimed === undefined) claimed = -1;
+  if (idx <= claimed) return;
+  var reward = 0;
+  for (var i = claimed + 1; i <= idx; i++) {
+    reward += COLLECTION_QUALITY_BONUS[i];
+  }
+  state.collectionQualityBonusClaimed = idx;
+  state.cash += reward;
+  queueToast("Collection quality now " + GRADES[idx].label + "! +" + formatMoney(reward) + " bonus.");
 }
 
 function checkCollectionBonuses() {

@@ -26,6 +26,7 @@ function renderAll() {
   renderCheckChange();
   renderUpgrades();
   renderTray();
+  renderCollectionQuality();
   renderCollection();
   flushToasts();
 }
@@ -182,6 +183,29 @@ function renderTray() {
     }
     container.appendChild(el);
   });
+}
+
+// The collection's quality is only as good as its worst coin -- shows the
+// current floor grade and the cash bonus for raising it further.
+function renderCollectionQuality() {
+  var container = document.getElementById("collection-quality");
+  if (!container) return;
+  var idx = collectionQualityIndex();
+  if (idx < 0) {
+    container.innerHTML = "";
+    return;
+  }
+  var claimed = state.collectionQualityBonusClaimed;
+  if (claimed === undefined) claimed = -1;
+  var html = "Collection quality: " + gradeSpan(GRADES[idx]);
+  if (idx < GRADES.length - 1) {
+    var next = GRADES[idx + 1];
+    var reward = COLLECTION_QUALITY_BONUS[idx + 1];
+    html += ' · replace your worst coin to reach ' + gradeSpan(next) + " for +" + formatMoney(reward);
+  } else {
+    html += " · every coin is Mint.";
+  }
+  container.innerHTML = html;
 }
 
 function renderCollection() {

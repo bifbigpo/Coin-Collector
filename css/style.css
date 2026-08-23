@@ -318,6 +318,14 @@ h2 {
 .rarity-VeryRare { border-left: 3px solid var(--c-veryrare); }
 .rarity-Legendary { border-left: 3px solid var(--c-legendary); box-shadow: 0 0 10px rgba(212,175,55,0.3); }
 
+.collection-quality {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
 .collection-group {
   margin-bottom: 18px;
 }
