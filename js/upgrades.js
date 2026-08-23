@@ -38,13 +38,13 @@ var UPGRADES = [
     costMult: 1.8
   },
   {
-    id: "grading_expertise",
-    name: "Grading Expertise",
-    blurb: "Practice and a proper reference guide. Grades faster and narrows the range of possible grades shown -- eventually down to the exact grade.",
+    id: "grading_books",
+    name: "Grading Reference Books",
+    blurb: "Standard references on assessing condition. Studying one gives your eye a head start -- though nothing replaces grading coins yourself.",
     type: "leveled",
-    maxLevel: 2,
-    baseCost: 12000,
-    costMult: 3
+    maxLevel: 6,
+    baseCost: 3000,
+    costMult: 2.0
   },
   {
     id: "appraiser",
@@ -76,7 +76,7 @@ var UPGRADES = [
   {
     id: "auto_curator",
     name: "Curator's Ledger",
-    blurb: "A running record of what you need. Automatically keeps coins missing from your collection and sells the rest once they're graded.",
+    blurb: "A running record of what you need. Automatically keeps coins missing from your collection and sells the rest once they're identified.",
     type: "toggle",
     baseCost: 25000
   },

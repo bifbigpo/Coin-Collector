@@ -37,9 +37,14 @@ function renderHeader() {
   var owned = Object.keys(state.collection).length;
   var passive = passiveIncomePerSecond();
   var passivePart = passive > 0 ? " · " + formatMoney(passive) + "/sec passive" : "";
+  var skillLevel = gradingSkillLevel();
+  var xp = state.gradingXp || 0;
+  var nextTier = SKILL_TIERS[skillLevel + 1];
+  var skillPart = " · grading skill " + (skillLevel + 1) + "/" + SKILL_TIERS.length +
+    (nextTier ? " (" + xp + "/" + nextTier.xp + " XP)" : " (max)");
   document.getElementById("stat-line").textContent =
     owned + " / " + COINS.length + " coins collected · " + groups + " / " + totalGroups + " sets complete · " +
-    "sale value " + Math.round(sellMultiplier() * 100) + "%" + passivePart;
+    "sale value " + Math.round(sellMultiplier() * 100) + "%" + skillPart + passivePart;
 }
 
 function renderShop() {
@@ -149,18 +154,8 @@ function renderTray() {
       var owned = !!state.collection[coin.id];
       var sellValue = coinSellValue(entry);
       var suggestedValue = coinSuggestedValue(entry);
-      var gradeBlock;
-      if (entry.graded) {
-        gradeBlock = '<div class="coin-grade">' + gradeDisplayLabel(entry) + '</div>';
-      } else if (entry.grading) {
-        var gpct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.gradeRemainingMs / entry.gradeTotalMs))));
-        var gsecs = Math.max(0, Math.ceil(entry.gradeRemainingMs / 1000));
-        gradeBlock =
-          '<div class="coin-grade coin-grade-unknown">Grading… ' + gsecs + 's</div>' +
-          '<div class="progress-track"><div class="progress-fill" style="width:' + gpct + '%"></div></div>';
-      } else {
-        gradeBlock = '<div class="coin-grade coin-grade-unknown">Awaiting grading</div>';
-      }
+      var gradeBlock = '<div class="coin-grade' + (entry.manuallyGraded ? "" : " coin-grade-unknown") + '">' +
+        gradeDisplayLabel(entry) + '</div>';
       el.className = "coin-slot identified rarity-" + coin.rarity;
       el.innerHTML =
         '<div class="coin-face">' + coin.name + '</div>' +
@@ -168,7 +163,8 @@ function renderTray() {
         '<div class="coin-rarity">' + RARITY[coin.rarity].label + (owned ? " · Duplicate" : " · Needed") + '</div>' +
         gradeBlock +
         '<div class="coin-actions">' +
-        (entry.graded && !owned ? '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>' : "") +
+        (owned ? "" : '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>') +
+        (entry.manuallyGraded ? "" : '<button class="btn btn-small" data-action="grade-coin" data-uid="' + entry.uid + '">Grade</button>') +
         '<button class="btn btn-small btn-outline" data-action="sell-coin" data-uid="' + entry.uid + '">Sell ' + formatMoney(sellValue) + '</button>' +
         '</div>' +
         (sellValue < suggestedValue ? '<div class="coin-suggested">Suggested ' + formatMoney(suggestedValue) + '</div>' : "");

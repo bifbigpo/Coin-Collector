@@ -11,6 +11,7 @@ function handleClick(e) {
     case "unlock-lot": unlockLot(id); break;
     case "buy-upgrade": buyUpgrade(id); break;
     case "keep-coin": keepCoin(uid); break;
+    case "grade-coin": gradeCoin(uid); break;
     case "sell-coin": sellCoin(uid); break;
     case "sell-duplicates": sellAllDuplicates(); break;
     case "keep-needed": keepAllNeeded(); break;

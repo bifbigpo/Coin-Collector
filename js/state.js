@@ -1,4 +1,4 @@
-var SAVE_KEY = "coin_collector_save_v5";
+var SAVE_KEY = "coin_collector_save_v6";
 
 // A plain weighted pick with no rarity-luck multiplier -- used only for
 // the starting tray, which is built before `state` (and so any upgrades)
@@ -28,10 +28,7 @@ function buildStartingTray() {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
-      graded: false,
-      grading: false,
-      gradeRemainingMs: 0,
-      gradeTotalMs: 0,
+      manuallyGraded: false,
       trueGrade: null,
       gradeCap: STARTING_ESTATE.gradeCap || null
     });
@@ -47,10 +44,11 @@ function defaultState() {
     unlockedLots: { decimal_bag: true, check_change: true },
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
     collection: {}, // coinId -> true
-    tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, graded, grading, gradeRemainingMs, gradeTotalMs, trueGrade, gradeCap }
+    tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, manuallyGraded, trueGrade, gradeCap }
     nextUid: startingTray.length + 1,
     passiveAccrued: 0, // fractional pence carried between ticks
     lotCooldowns: {}, // lotId -> ms remaining
+    gradingXp: 0, // experience toward the grading skill (SKILL_TIERS in engine.js)
     stats: {
       lotsBought: 0,
       coinsSorted: 0,

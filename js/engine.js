@@ -1,7 +1,6 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 2000;
-var UNGRADED_GRADE_ID = "good"; // an ungraded coin is priced as if it were Good until proven otherwise
 
 // Standard numismatic grading scale, roughest to finest.
 var GRADES = [
@@ -20,12 +19,31 @@ GRADES.forEach(function (g) { GRADES_BY_ID[g.id] = g; });
 var GRADE_INDEX = {};
 GRADES.forEach(function (g, i) { GRADE_INDEX[g.id] = i; });
 
-// Grading time and precision by Grading Expertise level. Without the
-// upgrade, grading takes 5s and only narrows the true grade down to a
-// window of nearby tiers; each level speeds it up and narrows the window,
-// until it reveals the exact grade.
-var GRADING_TIME_MS = [5000, 3500, 2000];
-var GRADING_PRECISION_RADIUS = [2, 1, 0];
+// The player's grading skill, learned by grading coins themselves and by
+// buying reference books -- not bought outright. At skill 0 a coin's true
+// grade could be anywhere in a window of 3 tiers either side; each tier
+// of experience narrows that window, until it's exact.
+var SKILL_TIERS = [
+  { xp: 0, radius: 3 },
+  { xp: 25, radius: 2 },
+  { xp: 75, radius: 1 },
+  { xp: 200, radius: 0 }
+];
+var XP_PER_MANUAL_GRADE = 1;
+var XP_PER_BOOK = 20;
+
+function gradingSkillLevel() {
+  var xp = state.gradingXp || 0;
+  var level = 0;
+  for (var i = 0; i < SKILL_TIERS.length; i++) {
+    if (xp >= SKILL_TIERS[i].xp) level = i;
+  }
+  return level;
+}
+
+function gradingPrecisionRadius() {
+  return SKILL_TIERS[gradingSkillLevel()].radius;
+}
 
 function getLevel(upgradeId) {
   var v = state.upgradeLevels[upgradeId];
@@ -90,8 +108,24 @@ function rollGrade(allowedGradeIds) {
   return pool[pool.length - 1].id;
 }
 
+// The window of grades a coin could plausibly be, given the player's
+// current grading skill -- recomputed live, so leveling up skill
+// immediately sharpens the estimate for coins already sitting in the tray.
+function estimateRange(entry) {
+  var radius = gradingPrecisionRadius();
+  var idx = GRADE_INDEX[entry.trueGrade];
+  return {
+    idx: idx,
+    lo: Math.max(0, idx - radius),
+    hi: Math.min(GRADES.length - 1, idx + radius)
+  };
+}
+
+// Until a coin has been manually graded, price it at the bottom of its
+// estimated range -- a cautious default rather than assuming the best.
 function entryGradeMult(entry) {
-  return entry.graded ? GRADES_BY_ID[entry.trueGrade].mult : GRADES_BY_ID[UNGRADED_GRADE_ID].mult;
+  if (entry.manuallyGraded) return GRADES_BY_ID[entry.trueGrade].mult;
+  return GRADES[estimateRange(entry).lo].mult;
 }
 
 // The "suggested value" -- what the coin is really worth at its (assumed
@@ -105,20 +139,25 @@ function coinSellValue(entry) {
   return Math.max(1, Math.round(coinSuggestedValue(entry) * sellMultiplier()));
 }
 
-// What the player actually sees for a graded coin's condition: a narrow
-// window of nearby grades by default, collapsing to the exact grade once
-// Grading Expertise is maxed. Recomputed live, so buying the upgrade
-// immediately sharpens coins that were already graded. Poor coins are
-// obviously worn at a glance, so they're always shown exactly.
+// What the player sees for a coin's condition: the exact grade once
+// manually graded (or if it's Poor -- obviously worn at a glance, so it's
+// never worth queuing up), otherwise the skill-based estimate window.
 function gradeDisplayLabel(entry) {
-  if (!entry.graded) return "";
-  if (entry.trueGrade === "poor") return GRADES_BY_ID.poor.label;
-  var radius = GRADING_PRECISION_RADIUS[Math.min(getLevel("grading_expertise"), GRADING_PRECISION_RADIUS.length - 1)];
-  var idx = GRADE_INDEX[entry.trueGrade];
-  var lo = Math.max(0, idx - radius);
-  var hi = Math.min(GRADES.length - 1, idx + radius);
-  if (lo === hi) return GRADES[idx].label;
-  return GRADES[lo].label + " – " + GRADES[hi].label;
+  if (entry.manuallyGraded) return GRADES_BY_ID[entry.trueGrade].label;
+  var range = estimateRange(entry);
+  if (range.lo === range.hi) return GRADES[range.idx].label;
+  return GRADES[range.lo].label + " – " + GRADES[range.hi].label;
+}
+
+// A player's active choice to examine one coin closely, revealing its
+// exact grade instantly and building grading experience.
+function gradeCoin(uid) {
+  var entry = findTrayEntry(uid);
+  if (!entry || !entry.identified || entry.manuallyGraded) return;
+  entry.manuallyGraded = true;
+  state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
+  state.stats.coinsGraded++;
+  saveState();
 }
 
 function weightedPick(pool) {
@@ -162,10 +201,7 @@ function buyLot(lotId) {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
-      graded: false,
-      grading: false,
-      gradeRemainingMs: 0,
-      gradeTotalMs: 0,
+      manuallyGraded: false,
       trueGrade: null,
       gradeCap: lot.gradeCap || null
     });
@@ -199,7 +235,7 @@ function removeTrayEntry(uid) {
 
 function keepCoin(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.graded) return;
+  if (!entry || !entry.identified) return;
   if (!state.collection[entry.coinId]) {
     state.collection[entry.coinId] = true;
     state.stats.coinsKept++;
@@ -229,7 +265,7 @@ function sellAllDuplicates() {
 
 function keepAllNeeded() {
   var toKeep = state.tray.filter(function (e) {
-    return e.graded && !state.collection[e.coinId];
+    return e.identified && !state.collection[e.coinId];
   });
   toKeep.forEach(function (e) { keepCoin(e.uid); });
 }
@@ -269,6 +305,9 @@ function buyUpgrade(id) {
     if (state.cash < cost) return false;
     state.cash -= cost;
     state.upgradeLevels[id] = level + 1;
+    if (id === "grading_books") {
+      state.gradingXp = (state.gradingXp || 0) + XP_PER_BOOK;
+    }
   }
   saveState();
   return true;
@@ -299,8 +338,8 @@ function processIdentification() {
         e.identified = true;
         e.trueGrade = rollGrade(e.gradeCap);
         // A coin in Poor condition is obviously worn out at a glance --
-        // no need to queue it for formal grading.
-        if (e.trueGrade === "poor") e.graded = true;
+        // no need to examine it closely to know that much.
+        if (e.trueGrade === "poor") e.manuallyGraded = true;
         state.stats.coinsSorted++;
       }
     }
@@ -315,46 +354,6 @@ function processIdentification() {
         e.identifying = true;
         e.totalMs = identifyDurationMs();
         e.remainingMs = e.totalMs;
-        slotsUsed++;
-        didWork = true;
-      }
-    }
-  }
-
-  return didWork;
-}
-
-function gradeDurationMs() {
-  return GRADING_TIME_MS[Math.min(getLevel("grading_expertise"), GRADING_TIME_MS.length - 1)];
-}
-
-// Same queue-with-limited-slots pattern as identification, but only picks
-// up coins that have already been identified, and only one at a time --
-// there's no concurrency upgrade for grading (yet).
-function processGrading() {
-  var didWork = false;
-
-  state.tray.forEach(function (e) {
-    if (e.grading) {
-      e.gradeRemainingMs -= TICK_MS;
-      didWork = true;
-      if (e.gradeRemainingMs <= 0) {
-        e.grading = false;
-        e.graded = true;
-        state.stats.coinsGraded++;
-      }
-    }
-  });
-
-  var slotsUsed = state.tray.filter(function (e) { return e.grading; }).length;
-  var maxSlots = 1;
-  if (slotsUsed < maxSlots) {
-    for (var i = 0; i < state.tray.length && slotsUsed < maxSlots; i++) {
-      var e = state.tray[i];
-      if (e.identified && !e.graded && !e.grading) {
-        e.grading = true;
-        e.gradeTotalMs = gradeDurationMs();
-        e.gradeRemainingMs = e.gradeTotalMs;
         slotsUsed++;
         didWork = true;
       }
@@ -382,10 +381,9 @@ function tick() {
   });
 
   if (processIdentification()) changed = true;
-  if (processGrading()) changed = true;
 
   if (isOwned("auto_curator")) {
-    var resolved = state.tray.filter(function (e) { return e.graded; });
+    var resolved = state.tray.filter(function (e) { return e.identified; });
     resolved.forEach(function (e) {
       if (state.collection[e.coinId]) {
         sellCoin(e.uid);
