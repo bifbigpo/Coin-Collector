@@ -155,7 +155,7 @@ function renderTray() {
       var sellValue = coinSellValue(entry);
       var suggestedValue = coinSuggestedValue(entry);
       var gradeBlock = '<div class="coin-grade' + (entry.manuallyGraded ? "" : " coin-grade-unknown") + '">' +
-        gradeDisplayLabel(entry) + '</div>';
+        gradeDisplayHTML(entry) + '</div>';
       el.className = "coin-slot identified rarity-" + coin.rarity;
       el.innerHTML =
         '<div class="coin-face">' + coin.name + '</div>' +

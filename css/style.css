@@ -279,15 +279,25 @@ h2 {
 
 .coin-grade {
   font-size: 0.72rem;
-  color: var(--accent);
   font-weight: 600;
 }
 
 .coin-grade-unknown {
-  color: var(--text-dim);
   font-weight: 400;
   font-style: italic;
 }
+
+/* Grade scale, red (Poor) through violet (Mint) -- tuned for legibility
+   against the dark card background rather than a strict even spectrum. */
+.grade-poor  { color: hsl(0, 72%, 62%); }
+.grade-fair  { color: hsl(25, 75%, 58%); }
+.grade-good  { color: hsl(48, 75%, 58%); }
+.grade-vgood { color: hsl(85, 55%, 58%); }
+.grade-fine  { color: hsl(135, 45%, 58%); }
+.grade-vfine { color: hsl(172, 50%, 55%); }
+.grade-efine { color: hsl(200, 65%, 65%); }
+.grade-unc   { color: hsl(230, 65%, 74%); }
+.grade-mint  { color: hsl(268, 60%, 76%); }
 
 .coin-suggested {
   color: var(--text-dim);

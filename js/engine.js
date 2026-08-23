@@ -2,17 +2,18 @@ var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 2000;
 
-// Standard numismatic grading scale, roughest to finest.
+// Standard numismatic grading scale, roughest to finest. Each tier gets a
+// rainbow color, red (Poor) through violet (Mint), for the grade labels.
 var GRADES = [
-  { id: "poor", label: "Poor", mult: 0.2, weight: 22 },
-  { id: "fair", label: "Fair", mult: 0.3, weight: 18 },
-  { id: "good", label: "Good", mult: 0.4, weight: 16 },
-  { id: "vgood", label: "Very Good", mult: 0.55, weight: 14 },
-  { id: "fine", label: "Fine", mult: 0.75, weight: 12 },
-  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 9 },
-  { id: "efine", label: "Extremely Fine", mult: 1.5, weight: 5 },
-  { id: "unc", label: "Uncirculated", mult: 2.2, weight: 3 },
-  { id: "mint", label: "Mint", mult: 3.5, weight: 1 }
+  { id: "poor", label: "Poor", mult: 0.2, weight: 22, colorClass: "grade-poor" },
+  { id: "fair", label: "Fair", mult: 0.3, weight: 18, colorClass: "grade-fair" },
+  { id: "good", label: "Good", mult: 0.4, weight: 16, colorClass: "grade-good" },
+  { id: "vgood", label: "Very Good", mult: 0.55, weight: 14, colorClass: "grade-vgood" },
+  { id: "fine", label: "Fine", mult: 0.75, weight: 12, colorClass: "grade-fine" },
+  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 9, colorClass: "grade-vfine" },
+  { id: "efine", label: "Extremely Fine", mult: 1.5, weight: 5, colorClass: "grade-efine" },
+  { id: "unc", label: "Uncirculated", mult: 2.2, weight: 3, colorClass: "grade-unc" },
+  { id: "mint", label: "Mint", mult: 3.5, weight: 1, colorClass: "grade-mint" }
 ];
 var GRADES_BY_ID = {};
 GRADES.forEach(function (g) { GRADES_BY_ID[g.id] = g; });
@@ -147,6 +148,19 @@ function gradeDisplayLabel(entry) {
   var range = estimateRange(entry);
   if (range.lo === range.hi) return GRADES[range.idx].label;
   return GRADES[range.lo].label + " – " + GRADES[range.hi].label;
+}
+
+function gradeSpan(grade) {
+  return '<span class="' + grade.colorClass + '">' + grade.label + '</span>';
+}
+
+// Same as gradeDisplayLabel, but with each grade word colored along a
+// red-to-violet scale (Poor red, Mint violet) for the tray display.
+function gradeDisplayHTML(entry) {
+  if (entry.manuallyGraded) return gradeSpan(GRADES_BY_ID[entry.trueGrade]);
+  var range = estimateRange(entry);
+  if (range.lo === range.hi) return gradeSpan(GRADES[range.idx]);
+  return gradeSpan(GRADES[range.lo]) + " – " + gradeSpan(GRADES[range.hi]);
 }
 
 // A player's active choice to examine one coin closely, revealing its
