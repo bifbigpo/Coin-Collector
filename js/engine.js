@@ -358,17 +358,17 @@ function keepAllNeeded() {
 // maxing out your George V coins.
 var COLLECTION_QUALITY_BONUS = [100, 200, 300, 400, 500, 500, 1000, 5000, 50000];
 
-// A single type-collection's quality is only as good as its worst coin.
-// Returns a GRADE_INDEX, or -1 if nothing from this group has been
-// collected yet.
+// A single type-collection's quality is only as good as its worst coin --
+// and only counts once every coin of that type is owned, so a lone Mint
+// coin in an otherwise-empty set doesn't look "high quality." Returns a
+// GRADE_INDEX, or -1 if the set isn't complete yet.
 function collectionQualityIndexForGroup(groupId) {
-  var coinIds = Object.keys(state.collection).filter(function (id) {
-    return COINS_BY_ID[id].group === groupId;
-  });
-  if (!coinIds.length) return -1;
+  var coinsInGroup = COINS.filter(function (c) { return c.group === groupId; });
+  var complete = coinsInGroup.every(function (c) { return state.collection[c.id]; });
+  if (!complete) return -1;
   var min = GRADES.length - 1;
-  coinIds.forEach(function (id) {
-    var idx = GRADE_INDEX[state.collection[id].trueGrade];
+  coinsInGroup.forEach(function (c) {
+    var idx = GRADE_INDEX[state.collection[c.id].trueGrade];
     if (idx < min) min = idx;
   });
   return min;
