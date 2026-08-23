@@ -1,6 +1,7 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
-var BASE_IDENTIFY_MS = 2000;
+var BASE_IDENTIFY_MS = 1000;
+var GRADE_DURATION_MS = 1000;
 
 // Standard numismatic grading scale, roughest to finest. Each tier gets a
 // rainbow color, red (Poor) through violet (Mint), for the grade labels.
@@ -22,13 +23,15 @@ GRADES.forEach(function (g, i) { GRADE_INDEX[g.id] = i; });
 
 // The player's grading skill, learned by grading coins themselves and by
 // buying reference books -- not bought outright. At skill 0 a coin's true
-// grade could be anywhere in a window of 3 tiers either side; each tier
-// of experience narrows that window, until it's exact.
+// grade could be anywhere in a window of 3 tiers either side, and only
+// Poor coins are obvious enough to skip grading entirely. Each tier of
+// experience narrows that window and adds one more grade, from the bottom
+// up, that's obvious at a glance -- so less and less needs a manual check.
 var SKILL_TIERS = [
-  { xp: 0, radius: 3 },
-  { xp: 25, radius: 2 },
-  { xp: 75, radius: 1 },
-  { xp: 200, radius: 0 }
+  { xp: 0, radius: 3, autoSpotCount: 1 },
+  { xp: 25, radius: 2, autoSpotCount: 2 },
+  { xp: 75, radius: 1, autoSpotCount: 3 },
+  { xp: 200, radius: 0, autoSpotCount: 4 }
 ];
 var XP_PER_MANUAL_GRADE = 1;
 var XP_PER_BOOK = 20;
@@ -44,6 +47,23 @@ function gradingSkillLevel() {
 
 function gradingPrecisionRadius() {
   return SKILL_TIERS[gradingSkillLevel()].radius;
+}
+
+function autoSpotCount() {
+  return SKILL_TIERS[gradingSkillLevel()].autoSpotCount;
+}
+
+// Grades obvious enough, at the player's current skill, to need no formal
+// grading at all -- always re-evaluated live against current skill.
+function isAutoSpotted(entry) {
+  return GRADE_INDEX[entry.trueGrade] < autoSpotCount();
+}
+
+// A coin is "graded" -- known well enough to keep or replace with -- once
+// it's either been examined by hand or is obviously within a grade band
+// the player can now recognise on sight.
+function isCoinGraded(entry) {
+  return entry.manuallyGraded || isAutoSpotted(entry);
 }
 
 function getLevel(upgradeId) {
@@ -122,10 +142,10 @@ function estimateRange(entry) {
   };
 }
 
-// Until a coin has been manually graded, price it at the bottom of its
-// estimated range -- a cautious default rather than assuming the best.
+// Until a coin is graded, price it at the bottom of its estimated range --
+// a cautious default rather than assuming the best.
 function entryGradeMult(entry) {
-  if (entry.manuallyGraded) return GRADES_BY_ID[entry.trueGrade].mult;
+  if (isCoinGraded(entry)) return GRADES_BY_ID[entry.trueGrade].mult;
   return GRADES[estimateRange(entry).lo].mult;
 }
 
@@ -141,10 +161,10 @@ function coinSellValue(entry) {
 }
 
 // What the player sees for a coin's condition: the exact grade once
-// manually graded (or if it's Poor -- obviously worn at a glance, so it's
-// never worth queuing up), otherwise the skill-based estimate window.
+// graded (manually, or obvious at a glance at the player's skill),
+// otherwise the skill-based estimate window.
 function gradeDisplayLabel(entry) {
-  if (entry.manuallyGraded) return GRADES_BY_ID[entry.trueGrade].label;
+  if (isCoinGraded(entry)) return GRADES_BY_ID[entry.trueGrade].label;
   var range = estimateRange(entry);
   if (range.lo === range.hi) return GRADES[range.idx].label;
   return GRADES[range.lo].label + " – " + GRADES[range.hi].label;
@@ -157,21 +177,39 @@ function gradeSpan(grade) {
 // Same as gradeDisplayLabel, but with each grade word colored along a
 // red-to-violet scale (Poor red, Mint violet) for the tray display.
 function gradeDisplayHTML(entry) {
-  if (entry.manuallyGraded) return gradeSpan(GRADES_BY_ID[entry.trueGrade]);
+  if (isCoinGraded(entry)) return gradeSpan(GRADES_BY_ID[entry.trueGrade]);
   var range = estimateRange(entry);
   if (range.lo === range.hi) return gradeSpan(GRADES[range.idx]);
   return gradeSpan(GRADES[range.lo]) + " – " + gradeSpan(GRADES[range.hi]);
 }
 
-// A player's active choice to examine one coin closely, revealing its
-// exact grade instantly and building grading experience.
+// A player's active choice to examine one coin closely -- takes a second,
+// then reveals its exact grade and builds grading experience.
 function gradeCoin(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified || entry.manuallyGraded) return;
-  entry.manuallyGraded = true;
-  state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
-  state.stats.coinsGraded++;
+  if (!entry || !entry.identified || isCoinGraded(entry) || entry.grading) return;
+  entry.grading = true;
+  entry.gradeRemainingMs = GRADE_DURATION_MS;
   saveState();
+}
+
+// Advances in-progress manual grading. Unlike identification, there's no
+// slot limit -- examining one coin doesn't stop you starting another.
+function processManualGrading() {
+  var didWork = false;
+  state.tray.forEach(function (e) {
+    if (e.grading) {
+      e.gradeRemainingMs -= TICK_MS;
+      didWork = true;
+      if (e.gradeRemainingMs <= 0) {
+        e.grading = false;
+        e.manuallyGraded = true;
+        state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
+        state.stats.coinsGraded++;
+      }
+    }
+  });
+  return didWork;
 }
 
 function weightedPick(pool) {
@@ -215,6 +253,8 @@ function buyLot(lotId) {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
+      grading: false,
+      gradeRemainingMs: 0,
       manuallyGraded: false,
       trueGrade: null,
       gradeCap: lot.gradeCap || null
@@ -249,7 +289,7 @@ function removeTrayEntry(uid) {
 
 function keepCoin(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified) return;
+  if (!entry || !entry.identified || !isCoinGraded(entry)) return;
   if (!state.collection[entry.coinId]) {
     state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
     state.stats.coinsKept++;
@@ -271,7 +311,7 @@ function coinIsUpgrade(entry) {
 // already there, automatically selling the coin it replaces.
 function replaceCoin(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified || !coinIsUpgrade(entry)) return;
+  if (!entry || !entry.identified || !isCoinGraded(entry) || !coinIsUpgrade(entry)) return;
   var owned = state.collection[entry.coinId];
   var oldValue = coinSellValue({ coinId: entry.coinId, trueGrade: owned.trueGrade, manuallyGraded: owned.manuallyGraded });
   state.cash += oldValue;
@@ -302,7 +342,7 @@ function sellAllDuplicates() {
 
 function keepAllNeeded() {
   var toKeep = state.tray.filter(function (e) {
-    return e.identified && !state.collection[e.coinId];
+    return e.identified && isCoinGraded(e) && !state.collection[e.coinId];
   });
   toKeep.forEach(function (e) { keepCoin(e.uid); });
 }
@@ -374,9 +414,6 @@ function processIdentification() {
         e.identifying = false;
         e.identified = true;
         e.trueGrade = rollGrade(e.gradeCap);
-        // A coin in Poor condition is obviously worn out at a glance --
-        // no need to examine it closely to know that much.
-        if (e.trueGrade === "poor") e.manuallyGraded = true;
         state.stats.coinsSorted++;
       }
     }
@@ -418,16 +455,18 @@ function tick() {
   });
 
   if (processIdentification()) changed = true;
+  if (processManualGrading()) changed = true;
 
   if (isOwned("auto_curator")) {
     var resolved = state.tray.filter(function (e) { return e.identified; });
     resolved.forEach(function (e) {
       if (state.collection[e.coinId]) {
         sellCoin(e.uid);
-      } else {
+        changed = true;
+      } else if (isCoinGraded(e)) {
         keepCoin(e.uid);
+        changed = true;
       }
-      changed = true;
     });
   }
 

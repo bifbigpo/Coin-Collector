@@ -152,11 +152,20 @@ function renderTray() {
     } else {
       var coin = COINS_BY_ID[entry.coinId];
       var owned = !!state.collection[coin.id];
-      var isUpgrade = owned && coinIsUpgrade(entry);
+      var graded = isCoinGraded(entry);
+      var isUpgrade = owned && graded && coinIsUpgrade(entry);
       var sellValue = coinSellValue(entry);
       var suggestedValue = coinSuggestedValue(entry);
-      var gradeBlock = '<div class="coin-grade' + (entry.manuallyGraded ? "" : " coin-grade-unknown") + '">' +
-        gradeDisplayHTML(entry) + '</div>';
+      var gradeBlock;
+      if (entry.grading) {
+        var gpct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.gradeRemainingMs / GRADE_DURATION_MS))));
+        var gsecs = Math.max(0, Math.ceil(entry.gradeRemainingMs / 1000));
+        gradeBlock =
+          '<div class="coin-grade coin-grade-unknown">Grading… ' + gsecs + 's</div>' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + gpct + '%"></div></div>';
+      } else {
+        gradeBlock = '<div class="coin-grade' + (graded ? "" : " coin-grade-unknown") + '">' + gradeDisplayHTML(entry) + '</div>';
+      }
       el.className = "coin-slot identified rarity-" + coin.rarity;
       el.innerHTML =
         '<div class="coin-face">' + coin.name + '</div>' +
@@ -164,9 +173,9 @@ function renderTray() {
         '<div class="coin-rarity">' + RARITY[coin.rarity].label + (owned ? " · Duplicate" : " · Needed") + '</div>' +
         gradeBlock +
         '<div class="coin-actions">' +
-        (owned ? "" : '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>') +
+        (!owned && graded ? '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>' : "") +
         (isUpgrade ? '<button class="btn btn-small btn-primary" data-action="replace-coin" data-uid="' + entry.uid + '">Replace</button>' : "") +
-        (entry.manuallyGraded ? "" : '<button class="btn btn-small" data-action="grade-coin" data-uid="' + entry.uid + '">Grade</button>') +
+        (!graded && !entry.grading ? '<button class="btn btn-small" data-action="grade-coin" data-uid="' + entry.uid + '">Grade</button>' : "") +
         '<button class="btn btn-small btn-outline" data-action="sell-coin" data-uid="' + entry.uid + '">Sell ' + formatMoney(sellValue) + '</button>' +
         '</div>' +
         (sellValue < suggestedValue ? '<div class="coin-suggested">Suggested ' + formatMoney(suggestedValue) + '</div>' : "");
