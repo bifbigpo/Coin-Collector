@@ -38,11 +38,13 @@ var UPGRADES = [
     costMult: 1.8
   },
   {
-    id: "grading_kit",
-    name: "Grading Kit",
-    blurb: "A loupe, a reference guide, and a grading scale. Reveals the true grade -- and full value -- of every coin you identify. Without it, dealers lowball you on ungraded coins.",
-    type: "toggle",
-    baseCost: 15000
+    id: "grading_expertise",
+    name: "Grading Expertise",
+    blurb: "Practice and a proper reference guide. Grades faster and narrows the range of possible grades shown -- eventually down to the exact grade.",
+    type: "leveled",
+    maxLevel: 2,
+    baseCost: 12000,
+    costMult: 3
   },
   {
     id: "appraiser",
@@ -74,7 +76,7 @@ var UPGRADES = [
   {
     id: "auto_curator",
     name: "Curator's Ledger",
-    blurb: "A running record of what you need. Automatically keeps coins missing from your collection and sells the rest once they're identified.",
+    blurb: "A running record of what you need. Automatically keeps coins missing from your collection and sells the rest once they're graded.",
     type: "toggle",
     baseCost: 25000
   },

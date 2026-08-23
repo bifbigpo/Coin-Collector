@@ -1,18 +1,31 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 2000;
-var UNGRADED_SELL_MULT = 0.6; // what an ungraded coin fetches from a dealer -- a lowball
+var UNGRADED_SELL_MULT = 0.35; // what an ungraded coin fetches from a dealer -- a lowball
 
+// Standard numismatic grading scale, roughest to finest.
 var GRADES = [
-  { id: "poor", label: "Poor", mult: 0.3, weight: 30 },
-  { id: "fair", label: "Fair", mult: 0.45, weight: 25 },
-  { id: "fine", label: "Fine", mult: 0.6, weight: 25 },
-  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 14 },
-  { id: "efine", label: "Extremely Fine", mult: 1.6, weight: 5 },
-  { id: "unc", label: "Uncirculated", mult: 2.5, weight: 1 }
+  { id: "poor", label: "Poor", mult: 0.2, weight: 22 },
+  { id: "fair", label: "Fair", mult: 0.3, weight: 18 },
+  { id: "good", label: "Good", mult: 0.4, weight: 16 },
+  { id: "vgood", label: "Very Good", mult: 0.55, weight: 14 },
+  { id: "fine", label: "Fine", mult: 0.75, weight: 12 },
+  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 9 },
+  { id: "efine", label: "Extremely Fine", mult: 1.5, weight: 5 },
+  { id: "unc", label: "Uncirculated", mult: 2.2, weight: 3 },
+  { id: "mint", label: "Mint", mult: 3.5, weight: 1 }
 ];
 var GRADES_BY_ID = {};
 GRADES.forEach(function (g) { GRADES_BY_ID[g.id] = g; });
+var GRADE_INDEX = {};
+GRADES.forEach(function (g, i) { GRADE_INDEX[g.id] = i; });
+
+// Grading time and precision by Grading Expertise level. Without the
+// upgrade, grading takes 5s and only narrows the true grade down to a
+// window of nearby tiers; each level speeds it up and narrows the window,
+// until it reveals the exact grade.
+var GRADING_TIME_MS = [5000, 3500, 2000];
+var GRADING_PRECISION_RADIUS = [2, 1, 0];
 
 function getLevel(upgradeId) {
   var v = state.upgradeLevels[upgradeId];
@@ -76,8 +89,22 @@ function rollGrade(allowedGradeIds) {
 
 function coinSellValue(entry) {
   var coin = COINS_BY_ID[entry.coinId];
-  var gradeMult = isOwned("grading_kit") ? GRADES_BY_ID[entry.grade].mult : UNGRADED_SELL_MULT;
+  var gradeMult = entry.graded ? GRADES_BY_ID[entry.trueGrade].mult : UNGRADED_SELL_MULT;
   return Math.max(1, Math.round(coin.value * gradeMult * sellMultiplier()));
+}
+
+// What the player actually sees for a graded coin's condition: a narrow
+// window of nearby grades by default, collapsing to the exact grade once
+// Grading Expertise is maxed. Recomputed live, so buying the upgrade
+// immediately sharpens coins that were already graded.
+function gradeDisplayLabel(entry) {
+  if (!entry.graded) return "";
+  var radius = GRADING_PRECISION_RADIUS[Math.min(getLevel("grading_expertise"), GRADING_PRECISION_RADIUS.length - 1)];
+  var idx = GRADE_INDEX[entry.trueGrade];
+  var lo = Math.max(0, idx - radius);
+  var hi = Math.min(GRADES.length - 1, idx + radius);
+  if (lo === hi) return GRADES[idx].label;
+  return GRADES[lo].label + " – " + GRADES[hi].label;
 }
 
 function weightedPick(pool) {
@@ -121,7 +148,11 @@ function buyLot(lotId) {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
-      grade: null,
+      graded: false,
+      grading: false,
+      gradeRemainingMs: 0,
+      gradeTotalMs: 0,
+      trueGrade: null,
       gradeCap: lot.gradeCap || null
     });
   }
@@ -154,7 +185,7 @@ function removeTrayEntry(uid) {
 
 function keepCoin(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified) return;
+  if (!entry || !entry.graded) return;
   if (!state.collection[entry.coinId]) {
     state.collection[entry.coinId] = true;
     state.stats.coinsKept++;
@@ -184,7 +215,7 @@ function sellAllDuplicates() {
 
 function keepAllNeeded() {
   var toKeep = state.tray.filter(function (e) {
-    return e.identified && !state.collection[e.coinId];
+    return e.graded && !state.collection[e.coinId];
   });
   toKeep.forEach(function (e) { keepCoin(e.uid); });
 }
@@ -252,7 +283,6 @@ function processIdentification() {
       if (e.remainingMs <= 0) {
         e.identifying = false;
         e.identified = true;
-        e.grade = rollGrade(e.gradeCap);
         state.stats.coinsSorted++;
       }
     }
@@ -267,6 +297,47 @@ function processIdentification() {
         e.identifying = true;
         e.totalMs = identifyDurationMs();
         e.remainingMs = e.totalMs;
+        slotsUsed++;
+        didWork = true;
+      }
+    }
+  }
+
+  return didWork;
+}
+
+function gradeDurationMs() {
+  return GRADING_TIME_MS[Math.min(getLevel("grading_expertise"), GRADING_TIME_MS.length - 1)];
+}
+
+// Same queue-with-limited-slots pattern as identification, but only picks
+// up coins that have already been identified, and only one at a time --
+// there's no concurrency upgrade for grading (yet).
+function processGrading() {
+  var didWork = false;
+
+  state.tray.forEach(function (e) {
+    if (e.grading) {
+      e.gradeRemainingMs -= TICK_MS;
+      didWork = true;
+      if (e.gradeRemainingMs <= 0) {
+        e.grading = false;
+        e.graded = true;
+        e.trueGrade = rollGrade(e.gradeCap);
+        state.stats.coinsGraded++;
+      }
+    }
+  });
+
+  var slotsUsed = state.tray.filter(function (e) { return e.grading; }).length;
+  var maxSlots = 1;
+  if (slotsUsed < maxSlots) {
+    for (var i = 0; i < state.tray.length && slotsUsed < maxSlots; i++) {
+      var e = state.tray[i];
+      if (e.identified && !e.graded && !e.grading) {
+        e.grading = true;
+        e.gradeTotalMs = gradeDurationMs();
+        e.gradeRemainingMs = e.gradeTotalMs;
         slotsUsed++;
         didWork = true;
       }
@@ -294,9 +365,10 @@ function tick() {
   });
 
   if (processIdentification()) changed = true;
+  if (processGrading()) changed = true;
 
   if (isOwned("auto_curator")) {
-    var resolved = state.tray.filter(function (e) { return e.identified; });
+    var resolved = state.tray.filter(function (e) { return e.graded; });
     resolved.forEach(function (e) {
       if (state.collection[e.coinId]) {
         sellCoin(e.uid);

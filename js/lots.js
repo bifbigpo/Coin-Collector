@@ -36,9 +36,9 @@ function buildLotPool(lot) {
   return pool;
 }
 
-// Beginner bags only ever turn up well-worn coin -- no Extremely Fine or
-// Uncirculated surprises until you're buying from someone who sorts stock.
-var BEGINNER_GRADES = ["poor", "fair", "fine", "vfine"];
+// Beginner bags only ever turn up well-worn coin -- the bottom of the
+// grading scale -- until you're buying from someone who sorts stock.
+var BEGINNER_GRADES = ["poor", "fair", "good", "vgood"];
 
 var LOTS = [
   {

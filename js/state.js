@@ -1,4 +1,4 @@
-var SAVE_KEY = "coin_collector_save_v3";
+var SAVE_KEY = "coin_collector_save_v4";
 
 function defaultState() {
   return {
@@ -7,13 +7,14 @@ function defaultState() {
     unlockedLots: { predecimal_bag: true, decimal_bag: true, check_change: true },
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
     collection: {}, // coinId -> true
-    tray: [], // { uid, coinId, identified, identifying, remainingMs, totalMs, grade, gradeCap }
+    tray: [], // { uid, coinId, identified, identifying, remainingMs, totalMs, graded, grading, gradeRemainingMs, gradeTotalMs, trueGrade, gradeCap }
     nextUid: 1,
     passiveAccrued: 0, // fractional pence carried between ticks
     lotCooldowns: {}, // lotId -> ms remaining
     stats: {
       lotsBought: 0,
       coinsSorted: 0,
+      coinsGraded: 0,
       coinsKept: 0,
       coinsSold: 0,
       cashEarnedFromSelling: 0

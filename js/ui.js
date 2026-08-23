@@ -148,18 +148,26 @@ function renderTray() {
       var coin = COINS_BY_ID[entry.coinId];
       var owned = !!state.collection[coin.id];
       var sellValue = coinSellValue(entry);
-      var graded = isOwned("grading_kit");
-      var gradeLine = graded
-        ? GRADES_BY_ID[entry.grade].label
-        : "Ungraded";
+      var gradeBlock;
+      if (entry.graded) {
+        gradeBlock = '<div class="coin-grade">' + gradeDisplayLabel(entry) + '</div>';
+      } else if (entry.grading) {
+        var gpct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.gradeRemainingMs / entry.gradeTotalMs))));
+        var gsecs = Math.max(0, Math.ceil(entry.gradeRemainingMs / 1000));
+        gradeBlock =
+          '<div class="coin-grade coin-grade-unknown">Grading… ' + gsecs + 's</div>' +
+          '<div class="progress-track"><div class="progress-fill" style="width:' + gpct + '%"></div></div>';
+      } else {
+        gradeBlock = '<div class="coin-grade coin-grade-unknown">Awaiting grading</div>';
+      }
       el.className = "coin-slot identified rarity-" + coin.rarity;
       el.innerHTML =
         '<div class="coin-face">' + coin.name + '</div>' +
         '<div class="coin-label">' + coin.subtitle + '</div>' +
         '<div class="coin-rarity">' + RARITY[coin.rarity].label + (owned ? " · Duplicate" : " · Needed") + '</div>' +
-        '<div class="coin-grade' + (graded ? "" : " coin-grade-unknown") + '">' + gradeLine + '</div>' +
+        gradeBlock +
         '<div class="coin-actions">' +
-        (owned ? "" : '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>') +
+        (entry.graded && !owned ? '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>' : "") +
         '<button class="btn btn-small btn-outline" data-action="sell-coin" data-uid="' + entry.uid + '">Sell ' + formatMoney(sellValue) + '</button>' +
         '</div>';
     }
