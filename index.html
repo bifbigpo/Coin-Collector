@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glyphbound — Incremental Language Prototype</title>
+<style>
+  :root{
+    --bg: #14100c;
+    --bg2: #1c1610;
+    --panel: #221a13;
+    --panel-edge: #3a2c1c;
+    --ink: #e8dcc4;
+    --ink-dim: #a89a7c;
+    --gold: #d4af37;
+    --gold-dim: #8a723a;
+    --danger: #b0463c;
+    --good: #6b8f4e;
+    --unknown: #7a6a4e;
+    --known: #e8dcc4;
+    --filler: #6f6353;
+    font-size: 16px;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0;
+    background: radial-gradient(ellipse at top, #241b12 0%, var(--bg) 60%);
+    color: var(--ink);
+    font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
+    min-height: 100vh;
+  }
+  h1,h2,h3{ font-family: Georgia, serif; margin: 0 0 .4em 0; letter-spacing: .02em; }
+  button{
+    font-family: inherit;
+    cursor: pointer;
+    background: linear-gradient(180deg, #3a2c1c, #2a2013);
+    color: var(--ink);
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: .5em .8em;
+    font-size: .95em;
+    transition: transform .08s ease, border-color .15s ease, background .15s ease;
+  }
+  button:hover:not(:disabled){ border-color: var(--gold-dim); background: linear-gradient(180deg, #453320, #302514); }
+  button:active:not(:disabled){ transform: scale(0.97); }
+  button:disabled{ opacity: .4; cursor: not-allowed; }
+  .wrap{ max-width: 1180px; margin: 0 auto; padding: 1.2em 1.2em 4em; }
+
+  header.top{
+    display:flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-bottom: .6em; margin-bottom: 1em; gap: .5em;
+  }
+  header.top .title{ display:flex; align-items:baseline; gap:.6em; }
+  header.top .title h1{ font-size: 1.6em; color: var(--gold); }
+  header.top .subtitle{ color: var(--ink-dim); font-size: .85em; font-style: italic; }
+  .stats-bar{ display:flex; gap: 1.4em; flex-wrap: wrap; font-size: .95em; }
+  .stats-bar .stat b{ color: var(--gold); display:block; font-size: 1.15em; }
+  .stats-bar .stat span.label{ color: var(--ink-dim); font-size: .78em; text-transform: uppercase; letter-spacing: .06em; }
+
+  .grid{ display:grid; grid-template-columns: 1fr 1fr; gap: 1em; align-items: start; }
+  @media (max-width: 880px){ .grid{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background: linear-gradient(180deg, var(--panel), #1a130d);
+    border: 1px solid var(--panel-edge);
+    border-radius: 10px;
+    padding: 1em 1.1em;
+    margin-bottom: 1em;
+    box-shadow: inset 0 0 40px rgba(0,0,0,.25);
+  }
+  .panel h2{ font-size: 1.05em; color: var(--gold); border-bottom: 1px dashed var(--panel-edge); padding-bottom: .4em; }
+  .panel h2 .sub{ color: var(--ink-dim); font-weight: normal; font-size: .8em; }
+
+  .study-btn{
+    width: 100%; padding: 1.1em; font-size: 1.15em; color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    background: radial-gradient(ellipse at center, #3a2c17, #221a10);
+    border-radius: 10px;
+    margin-bottom: .6em;
+  }
+  .study-btn:hover{ box-shadow: 0 0 18px rgba(212,175,55,.25); }
+  .study-hint{ text-align:center; color: var(--ink-dim); font-size: .8em; margin-bottom: .8em; }
+
+  .upgrade-row{
+    display:flex; justify-content: space-between; align-items:center;
+    padding: .5em 0; border-bottom: 1px solid rgba(255,255,255,.04);
+    gap: .6em;
+  }
+  .upgrade-row:last-child{ border-bottom: none; }
+  .upgrade-row .info{ flex: 1; }
+  .upgrade-row .info .name{ color: var(--ink); font-weight: bold; font-size: .95em; }
+  .upgrade-row .info .desc{ color: var(--ink-dim); font-size: .78em; }
+  .upgrade-row .buy{ min-width: 92px; text-align:center; }
+
+  .word-list{ display:flex; flex-direction: column; gap: .4em; max-height: 360px; overflow-y:auto; padding-right:.3em; }
+  .word-row{
+    display:flex; align-items:center; gap:.7em;
+    background: rgba(0,0,0,.18);
+    border: 1px solid var(--panel-edge);
+    border-radius: 7px; padding: .5em .7em;
+  }
+  .word-row.learned{ border-color: var(--good); background: rgba(107,143,78,.08); }
+  .word-row .glyph{ font-size: 1.3em; color: var(--gold-dim); min-width: 3.4em; letter-spacing: 1px; }
+  .word-row.learned .glyph{ color: var(--gold); }
+  .word-row .word-info{ flex:1; }
+  .word-row .word-info .en{ font-weight: bold; }
+  .word-row .word-info .rate{ color: var(--ink-dim); font-size: .78em; }
+  .word-row .learn-btn{ min-width: 84px; }
+  .word-row.learned .learn-btn{ visibility: hidden; }
+  .word-row .check{ color: var(--good); font-size:1.1em; width: 1.4em; text-align:center; }
+
+  .progress-outer{
+    background: #12100a; border: 1px solid var(--panel-edge); border-radius: 6px;
+    height: 10px; overflow: hidden; margin: .5em 0 .8em;
+  }
+  .progress-inner{ height:100%; background: linear-gradient(90deg, var(--gold-dim), var(--gold)); transition: width .3s ease; }
+
+  .tablet{
+    font-size: 1.12em; line-height: 1.9;
+    background: repeating-linear-gradient(0deg, #241c12, #241c12 26px, #251d13 27px);
+    border: 1px solid var(--panel-edge); border-radius: 8px;
+    padding: 1em 1.1em; min-height: 130px;
+  }
+  .tablet .filler{ color: var(--filler); }
+  .tablet .known{ color: var(--known); font-weight: bold; border-bottom: 1px dotted var(--good); }
+  .tablet .unknown{ color: var(--unknown); cursor: help; }
+
+  .directions{
+    margin-top: .9em; padding: .9em 1em;
+    border-left: 3px solid var(--gold);
+    background: rgba(212,175,55,.06);
+    font-style: italic; color: var(--ink);
+    display:none;
+  }
+  .directions.show{ display:block; }
+  .directions h3{ font-style: normal; color: var(--gold); font-size: .9em; text-transform: uppercase; letter-spacing:.06em; margin-bottom:.3em; }
+
+  .continue-row{ margin-top: .9em; text-align:right; }
+  .continue-row button{ font-size: 1.05em; color: var(--gold); border-color: var(--gold-dim); }
+
+  .ascend-box{
+    text-align:center; padding: 1.4em 1em;
+  }
+  .ascend-box p{ color: var(--ink-dim); font-size: .9em; }
+
+  footer.actions{
+    display:flex; justify-content: space-between; align-items:center;
+    color: var(--ink-dim); font-size: .78em; margin-top: 1.4em;
+    border-top: 1px solid var(--panel-edge); padding-top: .8em;
+  }
+  footer.actions button{ font-size: .8em; padding: .35em .6em; }
+
+  .floaters{ position: relative; }
+  .floater{
+    position:absolute; pointer-events:none; color: var(--gold);
+    font-size: .95em; font-weight:bold; opacity: 1;
+    animation: floatUp .9s ease-out forwards;
+  }
+  @keyframes floatUp{
+    to{ transform: translateY(-38px); opacity: 0; }
+  }
+  ::-webkit-scrollbar{ width: 8px; }
+  ::-webkit-scrollbar-thumb{ background: var(--panel-edge); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="title">
+      <h1>Glyphbound</h1>
+      <span class="subtitle">an incremental language prototype</span>
+    </div>
+    <div class="stats-bar" id="statsBar"></div>
+  </header>
+
+  <div id="chapterHeader"></div>
+
+  <div class="grid">
+    <div class="col-left">
+      <div class="panel floaters" id="studyPanel">
+        <h2>Study</h2>
+        <button class="study-btn" id="studyBtn">Study the Old Tongue</button>
+        <div class="study-hint" id="studyHint"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Upgrades</h2>
+        <div id="upgradeList"></div>
+      </div>
+
+      <div class="panel" id="ascendPanel" style="display:none;"></div>
+    </div>
+
+    <div class="col-right">
+      <div class="panel">
+        <h2>Vocabulary <span class="sub" id="vocabProgressLabel"></span></h2>
+        <div class="progress-outer"><div class="progress-inner" id="vocabProgressBar" style="width:0%"></div></div>
+        <div class="word-list" id="wordList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>The Tablet</h2>
+        <div class="tablet" id="tablet"></div>
+        <div class="directions" id="directions">
+          <h3>Directions Deciphered</h3>
+          <div id="directionsText"></div>
+        </div>
+        <div class="continue-row" id="continueRow"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="actions">
+    <span id="saveStatus">autosaving…</span>
+    <button id="resetBtn">Reset Save</button>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- Ancient-script transliteration ----------
+  const RUNES = {
+    a:'ᚨ', b:'ᛒ', c:'ᚲ', d:'ᛞ', e:'ᛖ', f:'ᚠ', g:'ᚷ', h:'ᚺ', i:'ᛁ', j:'ᛃ',
+    k:'ᚲ', l:'ᛚ', m:'ᛗ', n:'ᚾ', o:'ᛟ', p:'ᛈ', q:'ᚲᚹ', r:'ᚱ', s:'ᛊ', t:'ᛏ',
+    u:'ᚢ', v:'ᚡ', w:'ᚹ', x:'ᛉ', y:'ᛡ', z:'ᛎ'
+  };
+  function glyphify(word){
+    return word.toLowerCase().split('').map(ch => RUNES[ch] || ch).join(' ');
+  }
+
+  // ---------- Content: chapters ----------
+  function W(id, en, cost, rate){ return { id, en, cost, rate }; }
+
+  const CHAPTERS = [
+    {
+      name: "The Trailhead",
+      flavor: "A weathered signpost stands at the edge of the village, carved in a tongue no one alive remembers.",
+      words: [
+        W('c1_path','path',10,0.4), W('c1_forest','forest',14,0.5), W('c1_water','water',18,0.5),
+        W('c1_stone','stone',22,0.6), W('c1_north','north',12,0.4), W('c1_light','light',26,0.6),
+        W('c1_home','home',30,0.7), W('c1_walk','walk',16,0.5), W('c1_safe','safe',20,0.5), W('c1_sun','sun',24,0.6)
+      ],
+      message: "Walk the path north through the forest. Follow the light of the sun to find water by the stone. It is safe. This is your new home.",
+      directions: "The tablet's meaning settles into your mind: walk north along the path, through the forest, toward the light of the sun, to a stone by clear water. There, hidden in the trees, waits your next destination — a hollow in the hillside that breathes cold air."
+    },
+    {
+      name: "The Hollow Cave",
+      flavor: "Cold air breathes from a crack in the hillside. More carvings mark the entrance.",
+      words: [
+        W('c2_fire','fire',18,0.6), W('c2_dark','dark',14,0.5), W('c2_cave','cave',20,0.6),
+        W('c2_danger','danger',28,0.7), W('c2_deep','deep',22,0.6), W('c2_sound','sound',16,0.5),
+        W('c2_echo','echo',24,0.6), W('c2_fear','fear',26,0.7), W('c2_courage','courage',32,0.8), W('c2_treasure','treasure',40,0.9)
+      ],
+      message: "Enter the cave with fire in hand. It is dark and deep. You will hear a sound, only an echo. Do not let fear stop you. Have courage, for treasure waits below.",
+      directions: "Enter with fire held high. The dark runs deep, and every sound is only an echo of your own fear. Push past it — courage will lead you to what is hidden. Beyond the deepest chamber, stone steps rise toward the open sky, up the shoulder of a distant mountain."
+    },
+    {
+      name: "The Mountain Temple",
+      flavor: "Stone steps climb out of the dark and into open air, toward something built by hands older than legend.",
+      words: [
+        W('c3_mountain','mountain',30,0.8), W('c3_temple','temple',34,0.8), W('c3_sky','sky',20,0.6),
+        W('c3_ancient','ancient',26,0.7), W('c3_sacred','sacred',28,0.7), W('c3_time','time',24,0.6),
+        W('c3_key','key',32,0.8), W('c3_door','door',22,0.6), W('c3_secret','secret',36,0.9), W('c3_truth','truth',40,1.0)
+      ],
+      message: "Climb the mountain to the ancient temple beneath the sky. This is sacred ground. Time has hidden a key behind the door. Find the secret, and you shall know the truth.",
+      directions: "Climb higher still. Beneath the open sky stands a temple older than memory — sacred, and patient. Time has hidden a key behind its door. Find the secret it guards, and the truth of this place, and of yourself, will finally be known."
+    }
+  ];
+
+  // ---------- State ----------
+  const SAVE_KEY = 'glyphbound-save-v1';
+
+  function freshRunState(){
+    return {
+      kp: 0,
+      totalKpEarnedRun: 0,
+      chapterIndex: 0,
+      learned: {},          // wordId -> true
+      upgrades: { focus: 0, mnemonic: 0, scribe: 0 }
+    };
+  }
+
+  function freshState(){
+    return Object.assign(freshRunState(), {
+      scholarPoints: 0,
+      ascensions: 0,
+      lifetimeKpEarned: 0
+    });
+  }
+
+  let state = load() || freshState();
+
+  function load(){
+    try{
+      const raw = localStorage.getItem(SAVE_KEY);
+      if(!raw) return null;
+      const parsed = JSON.parse(raw);
+      // shallow-merge to survive future added fields
+      return Object.assign(freshState(), parsed, {
+        learned: parsed.learned || {},
+        upgrades: Object.assign({focus:0,mnemonic:0,scribe:0}, parsed.upgrades || {})
+      });
+    }catch(e){ return null; }
+  }
+
+  let saveTimer = null;
+  function saveSoon(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, 400);
+  }
+  function save(){
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    const el = document.getElementById('saveStatus');
+    if(el){ el.textContent = 'saved ' + new Date().toLocaleTimeString(); }
+  }
+
+  // ---------- Derived values ----------
+  function currentChapter(){ return CHAPTERS[state.chapterIndex]; }
+
+  function costScale(){ return 1 + state.ascensions * 0.15; }
+
+  function wordCost(w){ return Math.round(w.cost * costScale()); }
+
+  function globalMultiplier(){
+    return (1 + state.scholarPoints * 0.1) * (1 + state.upgrades.mnemonic * 0.1);
+  }
+
+  function clickPower(){
+    return 1 + state.upgrades.focus;
+  }
+
+  function passiveRatePerSec(){
+    let base = state.upgrades.scribe * 0.5;
+    for(const ch of CHAPTERS){
+      for(const w of ch.words){
+        if(state.learned[w.id]) base += w.rate;
+      }
+    }
+    return base * globalMultiplier();
+  }
+
+  function chapterLearnedCount(ch){
+    return ch.words.filter(w => state.learned[w.id]).length;
+  }
+
+  function chapterComplete(ch){
+    return chapterLearnedCount(ch) === ch.words.length;
+  }
+
+  // ---------- Upgrade defs ----------
+  const UPGRADES = [
+    {
+      key: 'focus', name: 'Focused Study',
+      desc: () => `+1 Knowledge per click (currently ${clickPower()}/click)`,
+      cost: (lvl) => Math.round(10 * Math.pow(1.7, lvl) * costScale())
+    },
+    {
+      key: 'mnemonic', name: 'Mnemonic Technique',
+      desc: (lvl) => `+10% all Knowledge gain (currently +${lvl*10}%)`,
+      cost: (lvl) => Math.round(50 * Math.pow(2, lvl) * costScale())
+    },
+    {
+      key: 'scribe', name: 'Apprentice Scribe',
+      desc: (lvl) => `+0.5 Knowledge/sec, hired help (currently +${(lvl*0.5).toFixed(1)}/s)`,
+      cost: (lvl) => Math.round(40 * Math.pow(1.9, lvl) * costScale())
+    }
+  ];
+
+  // ---------- Formatting ----------
+  function fmt(n){
+    if(n < 1000) return (Math.round(n*10)/10).toString();
+    if(n < 1e6) return (n/1e3).toFixed(2) + 'K';
+    if(n < 1e9) return (n/1e6).toFixed(2) + 'M';
+    return (n/1e9).toFixed(2) + 'B';
+  }
+
+  // ---------- Actions ----------
+  function addKp(amount){
+    state.kp += amount;
+    state.totalKpEarnedRun += amount;
+    state.lifetimeKpEarned += amount;
+  }
+
+  function doStudyClick(evt){
+    const gain = clickPower() * globalMultiplier();
+    addKp(gain);
+    spawnFloater(evt, '+' + fmt(gain));
+    refreshAffordability();
+    saveSoon();
+  }
+
+  function spawnFloater(evt, text){
+    const panel = document.getElementById('studyPanel');
+    const rect = panel.getBoundingClientRect();
+    const f = document.createElement('div');
+    f.className = 'floater';
+    f.textContent = text;
+    const x = (evt && evt.clientX ? evt.clientX - rect.left : rect.width/2);
+    const y = (evt && evt.clientY ? evt.clientY - rect.top : 40);
+    f.style.left = Math.max(8, Math.min(rect.width-30, x)) + 'px';
+    f.style.top = y + 'px';
+    panel.appendChild(f);
+    setTimeout(() => f.remove(), 950);
+  }
+
+  function learnWord(ch, w){
+    const cost = wordCost(w);
+    if(state.learned[w.id] || state.kp < cost) return;
+    state.kp -= cost;
+    state.learned[w.id] = true;
+    renderAll();
+    saveSoon();
+  }
+
+  function buyUpgrade(def){
+    const lvl = state.upgrades[def.key];
+    const cost = def.cost(lvl);
+    if(state.kp < cost) return;
+    state.kp -= cost;
+    state.upgrades[def.key] += 1;
+    renderAll();
+    saveSoon();
+  }
+
+  function advanceChapter(){
+    if(state.chapterIndex < CHAPTERS.length - 1){
+      state.chapterIndex += 1;
+      renderAll();
+      saveSoon();
+    }
+  }
+
+  function ascend(){
+    const gained = Math.max(1, Math.floor(Math.sqrt(state.totalKpEarnedRun / 500)));
+    if(!confirm(`Ascend as a Scholar?\n\nYou will lose your current Knowledge, learned words, and upgrades, but gain ${gained} permanent Scholar Point(s) — a permanent +${gained*10}% Knowledge multiplier — and start over with slightly higher word costs.`)) return;
+    const lifetime = state.lifetimeKpEarned;
+    const scholarPoints = state.scholarPoints + gained;
+    const ascensions = state.ascensions + 1;
+    state = Object.assign(freshRunState(), { scholarPoints, ascensions, lifetimeKpEarned: lifetime });
+    renderAll();
+    save();
+  }
+
+  function resetSave(){
+    if(!confirm('Reset ALL progress, including Scholar Points? This cannot be undone.')) return;
+    state = freshState();
+    localStorage.removeItem(SAVE_KEY);
+    renderAll();
+  }
+
+  // ---------- Tablet rendering ----------
+  function tokenizeMessage(msg){
+    return msg.match(/(\w+|[^\w\s]+|\s+)/g) || [];
+  }
+
+  function renderTablet(ch){
+    const tablet = document.getElementById('tablet');
+    const tokens = tokenizeMessage(ch.message);
+    const wordMap = {};
+    ch.words.forEach(w => { wordMap[w.en.toLowerCase()] = w; });
+
+    let html = '';
+    for(const tok of tokens){
+      if(/^\w+$/.test(tok)){
+        const w = wordMap[tok.toLowerCase()];
+        if(w){
+          if(state.learned[w.id]){
+            html += `<span class="known" title="${w.en}">${tok}</span>`;
+          } else {
+            html += `<span class="unknown" title="???">${glyphify(tok)}</span>`;
+          }
+        } else {
+          html += `<span class="filler">${tok}</span>`;
+        }
+      } else {
+        html += tok.replace(/\n/g,'<br>');
+      }
+    }
+    tablet.innerHTML = html;
+
+    const complete = chapterComplete(ch);
+    const dirBox = document.getElementById('directions');
+    const dirText = document.getElementById('directionsText');
+    const continueRow = document.getElementById('continueRow');
+    if(complete){
+      dirBox.classList.add('show');
+      dirText.textContent = ch.directions;
+      continueRow.innerHTML = '';
+      if(state.chapterIndex < CHAPTERS.length - 1){
+        const btn = document.createElement('button');
+        btn.textContent = `Continue to Chapter ${state.chapterIndex+2}: ${CHAPTERS[state.chapterIndex+1].name} →`;
+        btn.onclick = advanceChapter;
+        continueRow.appendChild(btn);
+      }
+    } else {
+      dirBox.classList.remove('show');
+      continueRow.innerHTML = '';
+    }
+  }
+
+  // ---------- Word list rendering ----------
+  function renderWordList(ch){
+    const list = document.getElementById('wordList');
+    list.innerHTML = '';
+    for(const w of ch.words){
+      const learned = !!state.learned[w.id];
+      const cost = wordCost(w);
+      const row = document.createElement('div');
+      row.className = 'word-row' + (learned ? ' learned' : '');
+      row.innerHTML = `
+        <div class="glyph">${glyphify(w.en)}</div>
+        <div class="word-info">
+          <div class="en">${learned ? w.en : '???'}</div>
+          <div class="rate">+${w.rate.toFixed(1)}/s knowledge</div>
+        </div>
+        <div class="check">${learned ? '✓' : ''}</div>
+      `;
+      const btn = document.createElement('button');
+      btn.className = 'learn-btn';
+      btn.textContent = learned ? 'Learned' : `Learn (${fmt(cost)})`;
+      btn.disabled = learned || state.kp < cost;
+      if(!learned) btn.dataset.cost = cost;
+      btn.onclick = () => learnWord(ch, w);
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+
+    const learnedCount = chapterLearnedCount(ch);
+    document.getElementById('vocabProgressLabel').textContent = `${learnedCount} / ${ch.words.length} words`;
+    document.getElementById('vocabProgressBar').style.width = (100 * learnedCount / ch.words.length) + '%';
+  }
+
+  // ---------- Upgrades rendering ----------
+  function renderUpgrades(){
+    const list = document.getElementById('upgradeList');
+    list.innerHTML = '';
+    for(const def of UPGRADES){
+      const lvl = state.upgrades[def.key];
+      const cost = def.cost(lvl);
+      const row = document.createElement('div');
+      row.className = 'upgrade-row';
+      row.innerHTML = `
+        <div class="info">
+          <div class="name">${def.name} <span style="color:var(--ink-dim);font-weight:normal;">Lv.${lvl}</span></div>
+          <div class="desc">${def.desc(lvl)}</div>
+        </div>
+      `;
+      const btn = document.createElement('button');
+      btn.className = 'buy';
+      btn.textContent = fmt(cost);
+      btn.disabled = state.kp < cost;
+      btn.dataset.cost = cost;
+      btn.onclick = () => buyUpgrade(def);
+      row.appendChild(btn);
+      list.appendChild(row);
+    }
+  }
+
+  // ---------- Header / stats ----------
+  function renderStats(){
+    const bar = document.getElementById('statsBar');
+    bar.innerHTML = `
+      <div class="stat"><span class="label">Knowledge</span><b id="kpValue">${fmt(state.kp)}</b></div>
+      <div class="stat"><span class="label">Per Second</span><b>${fmt(passiveRatePerSec())}</b></div>
+      <div class="stat"><span class="label">Scholar Points</span><b>${state.scholarPoints}</b></div>
+      <div class="stat"><span class="label">Ascensions</span><b>${state.ascensions}</b></div>
+    `;
+    document.getElementById('studyHint').textContent =
+      `+${fmt(clickPower() * globalMultiplier())} knowledge per click · ×${globalMultiplier().toFixed(2)} multiplier`;
+  }
+
+  // Cheap per-frame update: only the things that change every tick (the kp
+  // counter ticking up, and which buttons that makes affordable). Structural
+  // DOM (rows, tablet, upgrades) is only rebuilt by renderAll() in response
+  // to a state-changing action, not on every animation frame.
+  function refreshAffordability(){
+    const kpEl = document.getElementById('kpValue');
+    if(kpEl) kpEl.textContent = fmt(state.kp);
+    document.querySelectorAll('[data-cost]').forEach(btn => {
+      btn.disabled = state.kp < Number(btn.dataset.cost);
+    });
+  }
+
+  function renderChapterHeader(ch){
+    const el = document.getElementById('chapterHeader');
+    el.innerHTML = `
+      <div class="panel" style="margin-bottom:1em;">
+        <h2>Chapter ${state.chapterIndex+1}: ${ch.name}</h2>
+        <div style="color:var(--ink-dim);font-style:italic;font-size:.92em;">${ch.flavor}</div>
+      </div>
+    `;
+  }
+
+  function renderAscendPanel(ch){
+    const panel = document.getElementById('ascendPanel');
+    const complete = chapterComplete(ch);
+    const lastChapter = state.chapterIndex === CHAPTERS.length - 1;
+    if(lastChapter && complete){
+      panel.style.display = '';
+      const gained = Math.max(1, Math.floor(Math.sqrt(state.totalKpEarnedRun / 500)));
+      panel.innerHTML = `
+        <h2>Ascend</h2>
+        <div class="ascend-box">
+          <p>You have deciphered every tablet on this journey — for now. Ascend as a Scholar to carry your understanding forward into a new beginning.</p>
+          <p><b style="color:var(--gold)">+${gained} Scholar Point(s)</b> → permanent +${gained*10}% Knowledge multiplier</p>
+          <button id="ascendBtn">Ascend as a Scholar</button>
+        </div>
+      `;
+      document.getElementById('ascendBtn').onclick = ascend;
+    } else {
+      panel.style.display = 'none';
+      panel.innerHTML = '';
+    }
+  }
+
+  // ---------- Master render ----------
+  function renderAll(){
+    const ch = currentChapter();
+    renderStats();
+    renderChapterHeader(ch);
+    renderWordList(ch);
+    renderTablet(ch);
+    renderUpgrades();
+    renderAscendPanel(ch);
+  }
+
+  // ---------- Game loop ----------
+  let lastTick = performance.now();
+  function tick(now){
+    const dt = Math.min(1, (now - lastTick) / 1000);
+    lastTick = now;
+    const gain = passiveRatePerSec() * dt;
+    if(gain > 0) addKp(gain);
+    refreshAffordability();
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- Wire up ----------
+  document.getElementById('studyBtn').addEventListener('click', doStudyClick);
+  document.getElementById('resetBtn').addEventListener('click', resetSave);
+  setInterval(save, 8000);
+  window.addEventListener('beforeunload', save);
+
+  renderAll();
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
