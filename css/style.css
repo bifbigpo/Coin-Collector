@@ -289,6 +289,12 @@ h2 {
   font-style: italic;
 }
 
+.coin-suggested {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  margin-top: -2px;
+}
+
 .coin-actions {
   display: flex;
   gap: 6px;

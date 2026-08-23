@@ -148,6 +148,7 @@ function renderTray() {
       var coin = COINS_BY_ID[entry.coinId];
       var owned = !!state.collection[coin.id];
       var sellValue = coinSellValue(entry);
+      var suggestedValue = coinSuggestedValue(entry);
       var gradeBlock;
       if (entry.graded) {
         gradeBlock = '<div class="coin-grade">' + gradeDisplayLabel(entry) + '</div>';
@@ -169,7 +170,8 @@ function renderTray() {
         '<div class="coin-actions">' +
         (entry.graded && !owned ? '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>' : "") +
         '<button class="btn btn-small btn-outline" data-action="sell-coin" data-uid="' + entry.uid + '">Sell ' + formatMoney(sellValue) + '</button>' +
-        '</div>';
+        '</div>' +
+        (sellValue < suggestedValue ? '<div class="coin-suggested">Suggested ' + formatMoney(suggestedValue) + '</div>' : "");
     }
     container.appendChild(el);
   });

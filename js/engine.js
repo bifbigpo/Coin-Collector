@@ -1,7 +1,7 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 2000;
-var UNGRADED_SELL_MULT = 0.35; // what an ungraded coin fetches from a dealer -- a lowball
+var UNGRADED_GRADE_ID = "good"; // an ungraded coin is priced as if it were Good until proven otherwise
 
 // Standard numismatic grading scale, roughest to finest.
 var GRADES = [
@@ -68,7 +68,10 @@ function claimedGroupCount() {
 
 function sellMultiplier() {
   var appraiserLevel = getLevel("appraiser");
-  var appraiserFraction = 0.8 + 0.02 * appraiserLevel; // 0.8 -> 1.0
+  // Selling one coin at a time to a dealer only ever gets you a cut of what
+  // it's really worth -- 60% with no upgrades, rising to the full suggested
+  // value at max Appraiser's Eye.
+  var appraiserFraction = 0.6 + 0.04 * appraiserLevel; // 0.6 -> 1.0
   var groupMult = 1 + 0.05 * claimedGroupCount();
   var fullMult = state.fullCollectionBonusClaimed ? 1.15 : 1;
   return appraiserFraction * groupMult * fullMult;
@@ -87,18 +90,29 @@ function rollGrade(allowedGradeIds) {
   return pool[pool.length - 1].id;
 }
 
-function coinSellValue(entry) {
+function entryGradeMult(entry) {
+  return entry.graded ? GRADES_BY_ID[entry.trueGrade].mult : GRADES_BY_ID[UNGRADED_GRADE_ID].mult;
+}
+
+// The "suggested value" -- what the coin is really worth at its (assumed
+// or true) grade, before the dealer's cut for selling it one at a time.
+function coinSuggestedValue(entry) {
   var coin = COINS_BY_ID[entry.coinId];
-  var gradeMult = entry.graded ? GRADES_BY_ID[entry.trueGrade].mult : UNGRADED_SELL_MULT;
-  return Math.max(1, Math.round(coin.value * gradeMult * sellMultiplier()));
+  return Math.round(coin.value * entryGradeMult(entry));
+}
+
+function coinSellValue(entry) {
+  return Math.max(1, Math.round(coinSuggestedValue(entry) * sellMultiplier()));
 }
 
 // What the player actually sees for a graded coin's condition: a narrow
 // window of nearby grades by default, collapsing to the exact grade once
 // Grading Expertise is maxed. Recomputed live, so buying the upgrade
-// immediately sharpens coins that were already graded.
+// immediately sharpens coins that were already graded. Poor coins are
+// obviously worn at a glance, so they're always shown exactly.
 function gradeDisplayLabel(entry) {
   if (!entry.graded) return "";
+  if (entry.trueGrade === "poor") return GRADES_BY_ID.poor.label;
   var radius = GRADING_PRECISION_RADIUS[Math.min(getLevel("grading_expertise"), GRADING_PRECISION_RADIUS.length - 1)];
   var idx = GRADE_INDEX[entry.trueGrade];
   var lo = Math.max(0, idx - radius);
@@ -283,6 +297,10 @@ function processIdentification() {
       if (e.remainingMs <= 0) {
         e.identifying = false;
         e.identified = true;
+        e.trueGrade = rollGrade(e.gradeCap);
+        // A coin in Poor condition is obviously worn out at a glance --
+        // no need to queue it for formal grading.
+        if (e.trueGrade === "poor") e.graded = true;
         state.stats.coinsSorted++;
       }
     }
@@ -323,7 +341,6 @@ function processGrading() {
       if (e.gradeRemainingMs <= 0) {
         e.grading = false;
         e.graded = true;
-        e.trueGrade = rollGrade(e.gradeCap);
         state.stats.coinsGraded++;
       }
     }

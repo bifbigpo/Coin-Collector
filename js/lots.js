@@ -40,19 +40,21 @@ function buildLotPool(lot) {
 // grading scale -- until you're buying from someone who sorts stock.
 var BEGINNER_GRADES = ["poor", "fair", "good", "vgood"];
 
+// Not a purchasable lot -- this seeds the very first tray for free, as if
+// the player is going through a deceased family member's house. Weighted
+// toward the decades a long life would have spanned, with a handful of
+// older pieces turning up in a drawer somewhere.
+var STARTING_ESTATE = {
+  id: "family_estate",
+  gradeCap: BEGINNER_GRADES,
+  typeWeights: {
+    victoria_bun: 2, victoria_veiled: 3, edward_vii: 4,
+    george_v: 8, george_vi: 14, eii_predecimal: 18,
+    eii_decimal_new: 10, eii_decimal_bronze: 8, eii_decimal_steel: 3
+  }
+};
+
 var LOTS = [
-  {
-    id: "predecimal_bag",
-    name: "Pre-Decimal Charity Bag",
-    blurb: "A tin of old pre-decimal pennies from the local charity shop -- worn coppers nobody wanted after decimalisation.",
-    unlockCost: 0,
-    baseCost: 100,
-    coinsPerLot: 50,
-    gradeCap: BEGINNER_GRADES,
-    typeWeights: {
-      eii_predecimal: 30, george_vi: 25, george_v: 10, edward_vii: 4, victoria_veiled: 3, victoria_bun: 2
-    }
-  },
   {
     id: "decimal_bag",
     name: "Decimal Charity Bag",
