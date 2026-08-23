@@ -363,6 +363,12 @@ h2 {
   font-size: 0.62rem;
 }
 
+.collection-grade {
+  font-size: 0.6rem;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
 .toasts {
   position: fixed;
   bottom: 16px;

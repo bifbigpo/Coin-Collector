@@ -1,4 +1,4 @@
-var SAVE_KEY = "coin_collector_save_v6";
+var SAVE_KEY = "coin_collector_save_v7";
 
 // A plain weighted pick with no rarity-luck multiplier -- used only for
 // the starting tray, which is built before `state` (and so any upgrades)
@@ -43,7 +43,7 @@ function defaultState() {
     selectedLot: "decimal_bag",
     unlockedLots: { decimal_bag: true, check_change: true },
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
-    collection: {}, // coinId -> true
+    collection: {}, // coinId -> { trueGrade, manuallyGraded }
     tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, manuallyGraded, trueGrade, gradeCap }
     nextUid: startingTray.length + 1,
     passiveAccrued: 0, // fractional pence carried between ticks

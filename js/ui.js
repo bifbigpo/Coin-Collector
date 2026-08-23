@@ -152,6 +152,7 @@ function renderTray() {
     } else {
       var coin = COINS_BY_ID[entry.coinId];
       var owned = !!state.collection[coin.id];
+      var isUpgrade = owned && coinIsUpgrade(entry);
       var sellValue = coinSellValue(entry);
       var suggestedValue = coinSuggestedValue(entry);
       var gradeBlock = '<div class="coin-grade' + (entry.manuallyGraded ? "" : " coin-grade-unknown") + '">' +
@@ -164,6 +165,7 @@ function renderTray() {
         gradeBlock +
         '<div class="coin-actions">' +
         (owned ? "" : '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>') +
+        (isUpgrade ? '<button class="btn btn-small btn-primary" data-action="replace-coin" data-uid="' + entry.uid + '">Replace</button>' : "") +
         (entry.manuallyGraded ? "" : '<button class="btn btn-small" data-action="grade-coin" data-uid="' + entry.uid + '">Grade</button>') +
         '<button class="btn btn-small btn-outline" data-action="sell-coin" data-uid="' + entry.uid + '">Sell ' + formatMoney(sellValue) + '</button>' +
         '</div>' +
@@ -194,7 +196,8 @@ function renderCollection() {
       slot.className = "collection-slot" + (owned ? " owned rarity-" + coin.rarity : " unknown");
       slot.title = owned ? coin.name + " - " + coin.subtitle : "Not yet found";
       slot.innerHTML = owned
-        ? '<div class="coin-face">' + coin.name + '</div><div class="coin-label">' + coin.subtitle + '</div>'
+        ? '<div class="coin-face">' + coin.name + '</div><div class="coin-label">' + coin.subtitle + '</div>' +
+          '<div class="collection-grade">' + gradeDisplayHTML(state.collection[coin.id]) + '</div>'
         : '<div class="coin-face">?</div>';
       grid.appendChild(slot);
     });

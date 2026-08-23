@@ -251,10 +251,33 @@ function keepCoin(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.identified) return;
   if (!state.collection[entry.coinId]) {
-    state.collection[entry.coinId] = true;
+    state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
     state.stats.coinsKept++;
     checkCollectionBonuses();
   }
+  removeTrayEntry(uid);
+  saveState();
+}
+
+// True when this tray coin's true grade beats the one currently banked in
+// the collection for the same coin -- worth swapping in.
+function coinIsUpgrade(entry) {
+  var owned = state.collection[entry.coinId];
+  if (!owned) return false;
+  return GRADE_INDEX[entry.trueGrade] > GRADE_INDEX[owned.trueGrade];
+}
+
+// Swaps a better-graded tray coin into the collection in place of the one
+// already there, automatically selling the coin it replaces.
+function replaceCoin(uid) {
+  var entry = findTrayEntry(uid);
+  if (!entry || !entry.identified || !coinIsUpgrade(entry)) return;
+  var owned = state.collection[entry.coinId];
+  var oldValue = coinSellValue({ coinId: entry.coinId, trueGrade: owned.trueGrade, manuallyGraded: owned.manuallyGraded });
+  state.cash += oldValue;
+  state.stats.coinsSold++;
+  state.stats.cashEarnedFromSelling += oldValue;
+  state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
   removeTrayEntry(uid);
   saveState();
 }
