@@ -1,80 +1,87 @@
-// Bulk coin lots you can purchase. Each lot has an explicit weighted pool
-// of coin ids so early lots stay mundane (modern loose change) and later,
-// pricier lots dig further back into pre-decimal and Victorian pennies.
+// Bulk coin lots. Rather than hand-listing odds for every individual year
+// (there are 160+ of them now), each lot names which penny *types* it draws
+// from and how heavily, and the pool is built from that at purchase time --
+// ordinary years in a type share its weight evenly, key dates get a small
+// slice scaled by how rare they really are.
+
+var RARITY_POOL_MULTIPLIER = {
+  Common: 1,
+  Uncommon: 0.6,
+  Rare: 0.08,
+  VeryRare: 0.025,
+  Legendary: 0.0007
+};
+
+function buildLotPool(lot) {
+  var pool = {};
+  Object.keys(lot.typeWeights).forEach(function (typeId) {
+    var weight = lot.typeWeights[typeId];
+    COINS.filter(function (c) { return c.group === typeId; }).forEach(function (c) {
+      var mult = RARITY_POOL_MULTIPLIER[c.rarity] || 1;
+      pool[c.id] = (pool[c.id] || 0) + weight * mult;
+    });
+  });
+  return pool;
+}
 
 var LOTS = [
   {
-    id: "jar",
-    name: "Loose Change Jar",
-    blurb: "The coppers rattling around in everyone's kitchen drawer. Mostly modern.",
+    id: "charity_bag",
+    name: "Charity Shop Bag",
+    blurb: "50 assorted pennies from the local charity shop, sold by weight for a pound.",
     unlockCost: 0,
-    baseCost: 1500,
-    coinsPerLot: 4,
-    pool: {
-      eii_dec_one_penny_steel: 40, eii_dec_one_penny_bronze: 20, eii_dec_new_penny: 8,
-      ciii_penny: 10,
-      eii_pre_common: 3, geo6_common: 1
+    baseCost: 100,
+    coinsPerLot: 50,
+    typeWeights: {
+      eii_decimal_steel: 45, eii_decimal_bronze: 25, eii_decimal_new: 10, charles_iii: 12,
+      eii_predecimal: 4, george_vi: 1
     }
   },
   {
     id: "bank_bag",
     name: "Bank Coin Bag",
     blurb: "A sealed bag straight from the bank, with a few old survivors mixed in.",
-    unlockCost: 10000,
-    baseCost: 6000,
-    coinsPerLot: 6,
-    pool: {
-      eii_dec_one_penny_steel: 25, eii_dec_one_penny_bronze: 20, eii_dec_new_penny: 10,
-      ciii_penny: 8,
-      eii_pre_common: 10, geo6_common: 5, geo5_common: 1
+    unlockCost: 400,
+    baseCost: 500,
+    coinsPerLot: 35,
+    typeWeights: {
+      eii_decimal_steel: 25, eii_decimal_bronze: 18, eii_decimal_new: 8, charles_iii: 8,
+      eii_predecimal: 14, george_vi: 8, george_v: 1
     }
   },
   {
     id: "car_boot",
     name: "Car Boot Sale Box",
     blurb: "A shoebox of odds and ends bought off a folding table for a fiver.",
-    unlockCost: 40000,
-    baseCost: 22000,
-    coinsPerLot: 8,
-    pool: {
-      eii_dec_one_penny_steel: 8, eii_dec_one_penny_bronze: 8, eii_dec_new_penny: 5, ciii_penny: 3,
-      eii_pre_common: 15, eii_pre_1954: 0.02,
-      geo6_common: 12, geo6_1950: 0.6, geo6_1951: 0.3,
-      geo5_common: 8, geo5_1918h: 0.3, geo5_1919kn: 0.15, geo5_1933: 0.005,
-      edw7_common: 4, vic_veil_common: 2
+    unlockCost: 2000,
+    baseCost: 2500,
+    coinsPerLot: 20,
+    typeWeights: {
+      eii_decimal_steel: 6, eii_decimal_bronze: 5, eii_decimal_new: 3, charles_iii: 2,
+      eii_predecimal: 16, george_vi: 16, george_v: 10, edward_vii: 5, victoria_veiled: 3
     }
   },
   {
     id: "antique_lot",
     name: "Antique Dealer's Lot",
     blurb: "A dealer's tray of pre-decimal coppers, some of it genuinely old.",
-    unlockCost: 120000,
-    baseCost: 75000,
-    coinsPerLot: 6,
-    pool: {
-      geo6_common: 6, geo6_1950: 1.5, geo6_1951: 1, geo6_1952: 0.01,
-      geo5_common: 6, geo5_1918h: 1, geo5_1919kn: 0.6, geo5_1933: 0.02,
-      edw7_common: 5, edw7_1902_lowtide: 0.8,
-      vic_veil_common: 5, vic_veil_1897_hightide: 0.6,
-      vic_bun_common: 4, vic_bun_1869: 0.4,
-      eii_pre_common: 3, eii_pre_1954: 0.03
+    unlockCost: 12000,
+    baseCost: 15000,
+    coinsPerLot: 12,
+    typeWeights: {
+      george_vi: 10, george_v: 10, edward_vii: 9, victoria_veiled: 9, victoria_bun: 8, eii_predecimal: 4
     }
   },
   {
     id: "estate_hoard",
     name: "Estate Sale Hoard",
     blurb: "An entire collection, inherited and sold off in one lot. Anything could be in here.",
-    unlockCost: 400000,
-    baseCost: 250000,
+    unlockCost: 60000,
+    baseCost: 100000,
     coinsPerLot: 10,
-    pool: {
-      vic_bun_common: 3, vic_bun_1869: 1,
-      vic_veil_common: 3, vic_veil_1897_hightide: 1.2,
-      edw7_common: 3, edw7_1902_lowtide: 1.2,
-      geo5_common: 3, geo5_1918h: 1.5, geo5_1919kn: 1, geo5_1933: 0.08,
-      geo6_common: 3, geo6_1950: 2, geo6_1951: 1.5, geo6_1952: 0.05,
-      eii_pre_common: 3, eii_pre_1954: 0.15,
-      eii_dec_new_penny: 1, eii_dec_one_penny_bronze: 1, eii_dec_one_penny_steel: 1, ciii_penny: 0.8
+    typeWeights: {
+      victoria_bun: 6, victoria_veiled: 6, edward_vii: 6, george_v: 7, george_vi: 7,
+      eii_predecimal: 5, eii_decimal_steel: 2, eii_decimal_bronze: 2, eii_decimal_new: 2, charles_iii: 1.5
     }
   }
 ];

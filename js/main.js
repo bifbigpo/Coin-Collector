@@ -12,7 +12,6 @@ function handleClick(e) {
     case "buy-upgrade": buyUpgrade(id); break;
     case "keep-coin": keepCoin(uid); break;
     case "sell-coin": sellCoin(uid); break;
-    case "identify-all": identifyAll(); break;
     case "sell-duplicates": sellAllDuplicates(); break;
     case "keep-needed": keepAllNeeded(); break;
     case "reset-save": resetState(); return;

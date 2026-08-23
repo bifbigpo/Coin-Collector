@@ -34,9 +34,11 @@ function renderHeader() {
   var groups = claimedGroupCount();
   var totalGroups = COIN_GROUPS.length;
   var owned = Object.keys(state.collection).length;
+  var passive = passiveIncomePerSecond();
+  var passivePart = passive > 0 ? " · " + formatMoney(passive) + "/sec passive" : "";
   document.getElementById("stat-line").textContent =
     owned + " / " + COINS.length + " coins collected · " + groups + " / " + totalGroups + " sets complete · " +
-    "sale value " + Math.round(sellMultiplier() * 100) + "%";
+    "sale value " + Math.round(sellMultiplier() * 100) + "%" + passivePart;
 }
 
 function renderShop() {
@@ -115,23 +117,31 @@ function renderTray() {
 
   state.tray.forEach(function (entry) {
     var el = document.createElement("div");
-    if (!entry.identified) {
-      el.className = "coin-slot unidentified";
-      el.innerHTML = '<div class="coin-face">?</div><div class="coin-label">Unidentified</div>';
-      el.addEventListener("click", function () {
-        identifyCoin(entry.uid);
-        saveState();
-        renderAll();
-      });
+    if (entry.identifying) {
+      var pct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.remainingMs / entry.totalMs))));
+      var secsLeft = Math.max(0, Math.ceil(entry.remainingMs / 1000));
+      el.className = "coin-slot identifying";
+      el.innerHTML =
+        '<div class="coin-face">🔍</div>' +
+        '<div class="coin-label">Identifying… ' + secsLeft + 's</div>' +
+        '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+    } else if (!entry.identified) {
+      el.className = "coin-slot unidentified queued";
+      el.innerHTML = '<div class="coin-face">?</div><div class="coin-label">Queued</div>';
     } else {
       var coin = COINS_BY_ID[entry.coinId];
       var owned = !!state.collection[coin.id];
-      var sellValue = Math.round(coin.value * sellMultiplier());
+      var sellValue = coinSellValue(entry);
+      var graded = isOwned("grading_kit");
+      var gradeLine = graded
+        ? GRADES_BY_ID[entry.grade].label
+        : "Ungraded";
       el.className = "coin-slot identified rarity-" + coin.rarity;
       el.innerHTML =
         '<div class="coin-face">' + coin.name + '</div>' +
         '<div class="coin-label">' + coin.subtitle + '</div>' +
         '<div class="coin-rarity">' + RARITY[coin.rarity].label + (owned ? " · Duplicate" : " · Needed") + '</div>' +
+        '<div class="coin-grade' + (graded ? "" : " coin-grade-unknown") + '">' + gradeLine + '</div>' +
         '<div class="coin-actions">' +
         (owned ? "" : '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>') +
         '<button class="btn btn-small btn-outline" data-action="sell-coin" data-uid="' + entry.uid + '">Sell ' + formatMoney(sellValue) + '</button>' +
@@ -145,7 +155,9 @@ function renderCollection() {
   var container = document.getElementById("collection-groups");
   container.innerHTML = "";
   COIN_GROUPS.forEach(function (group) {
-    var coinsInGroup = COINS.filter(function (c) { return c.group === group.id; });
+    var coinsInGroup = COINS.filter(function (c) { return c.group === group.id; })
+      .slice()
+      .sort(function (a, b) { return a.year - b.year; });
     var ownedCount = coinsInGroup.filter(function (c) { return state.collection[c.id]; }).length;
     var section = document.createElement("div");
     section.className = "collection-group";

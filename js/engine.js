@@ -1,5 +1,17 @@
-var MAX_TRAY = 60;
+var MAX_TRAY = 250;
 var TICK_MS = 300;
+var BASE_IDENTIFY_MS = 2000;
+var UNGRADED_SELL_MULT = 0.6; // what an ungraded coin fetches from a dealer -- a lowball
+
+var GRADES = [
+  { id: "poor", label: "Poor", mult: 0.3, weight: 35 },
+  { id: "fine", label: "Fine", mult: 0.6, weight: 35 },
+  { id: "vfine", label: "Very Fine", mult: 1.0, weight: 20 },
+  { id: "efine", label: "Extremely Fine", mult: 1.6, weight: 8 },
+  { id: "unc", label: "Uncirculated", mult: 2.5, weight: 2 }
+];
+var GRADES_BY_ID = {};
+GRADES.forEach(function (g) { GRADES_BY_ID[g.id] = g; });
 
 function getLevel(upgradeId) {
   var v = state.upgradeLevels[upgradeId];
@@ -32,7 +44,8 @@ function lotCost(lot) {
 }
 
 function lotCoinCount(lot) {
-  return lot.coinsPerLot + getLevel("bigger_lots");
+  var level = getLevel("bigger_lots");
+  return Math.round(lot.coinsPerLot * (1 + 0.08 * level));
 }
 
 function claimedGroupCount() {
@@ -45,6 +58,22 @@ function sellMultiplier() {
   var groupMult = 1 + 0.05 * claimedGroupCount();
   var fullMult = state.fullCollectionBonusClaimed ? 1.15 : 1;
   return appraiserFraction * groupMult * fullMult;
+}
+
+function rollGrade() {
+  var total = GRADES.reduce(function (s, g) { return s + g.weight; }, 0);
+  var r = Math.random() * total;
+  for (var i = 0; i < GRADES.length; i++) {
+    r -= GRADES[i].weight;
+    if (r <= 0) return GRADES[i].id;
+  }
+  return GRADES[GRADES.length - 1].id;
+}
+
+function coinSellValue(entry) {
+  var coin = COINS_BY_ID[entry.coinId];
+  var gradeMult = isOwned("grading_kit") ? GRADES_BY_ID[entry.grade].mult : UNGRADED_SELL_MULT;
+  return Math.max(1, Math.round(coin.value * gradeMult * sellMultiplier()));
 }
 
 function weightedPick(pool) {
@@ -72,10 +101,19 @@ function buyLot(lotId) {
   if (state.cash < cost) return false;
   if (state.tray.length + count > MAX_TRAY) return false;
 
+  var pool = buildLotPool(lot);
   state.cash -= cost;
   for (var i = 0; i < count; i++) {
-    var coinId = weightedPick(lot.pool);
-    state.tray.push({ uid: state.nextUid++, coinId: coinId, identified: false });
+    var coinId = weightedPick(pool);
+    state.tray.push({
+      uid: state.nextUid++,
+      coinId: coinId,
+      identified: false,
+      identifying: false,
+      remainingMs: 0,
+      totalMs: 0,
+      grade: null
+    });
   }
   state.stats.lotsBought++;
   saveState();
@@ -90,23 +128,6 @@ function unlockLot(lotId) {
   state.unlockedLots[lotId] = true;
   saveState();
   return true;
-}
-
-function identifyCoin(uid) {
-  var entry = findTrayEntry(uid);
-  if (!entry || entry.identified) return;
-  entry.identified = true;
-  state.stats.coinsSorted++;
-}
-
-function identifyAll() {
-  state.tray.forEach(function (e) {
-    if (!e.identified) {
-      e.identified = true;
-      state.stats.coinsSorted++;
-    }
-  });
-  saveState();
 }
 
 function findTrayEntry(uid) {
@@ -135,8 +156,7 @@ function keepCoin(uid) {
 function sellCoin(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.identified) return;
-  var coin = COINS_BY_ID[entry.coinId];
-  var value = Math.round(coin.value * sellMultiplier());
+  var value = coinSellValue(entry);
   state.cash += value;
   state.stats.coinsSold++;
   state.stats.cashEarnedFromSelling += value;
@@ -198,22 +218,64 @@ function buyUpgrade(id) {
   return true;
 }
 
-function tick() {
-  var changed = false;
+function identifyDurationMs() {
+  var quickLevel = getLevel("quick_sort");
+  var duration = BASE_IDENTIFY_MS * Math.pow(0.9, quickLevel);
+  return Math.max(200, Math.round(duration));
+}
 
-  if (isOwned("auto_sort")) {
-    var quickLevel = getLevel("quick_sort");
-    var perTick = 1 + Math.floor(quickLevel / 2);
-    var identified = 0;
-    for (var i = 0; i < state.tray.length && identified < perTick; i++) {
-      if (!state.tray[i].identified) {
-        state.tray[i].identified = true;
+function maxIdentifySlots() {
+  return 1 + getLevel("sorting_slots");
+}
+
+// Advances in-progress identifications and fills any free slots from the
+// queue (FIFO). Returns true if anything changed, so the caller knows
+// whether a re-render is worth doing.
+function processIdentification() {
+  var didWork = false;
+
+  state.tray.forEach(function (e) {
+    if (e.identifying) {
+      e.remainingMs -= TICK_MS;
+      didWork = true;
+      if (e.remainingMs <= 0) {
+        e.identifying = false;
+        e.identified = true;
+        e.grade = rollGrade();
         state.stats.coinsSorted++;
-        identified++;
-        changed = true;
+      }
+    }
+  });
+
+  var slotsUsed = state.tray.filter(function (e) { return e.identifying; }).length;
+  var maxSlots = maxIdentifySlots();
+  if (slotsUsed < maxSlots) {
+    for (var i = 0; i < state.tray.length && slotsUsed < maxSlots; i++) {
+      var e = state.tray[i];
+      if (!e.identified && !e.identifying) {
+        e.identifying = true;
+        e.totalMs = identifyDurationMs();
+        e.remainingMs = e.totalMs;
+        slotsUsed++;
+        didWork = true;
       }
     }
   }
+
+  return didWork;
+}
+
+function passiveIncomePerSecond() {
+  var level = getLevel("display_case");
+  if (!level) return 0;
+  var collected = Object.keys(state.collection).length;
+  return collected * level * 0.08; // pence/sec
+}
+
+function tick() {
+  var changed = false;
+
+  if (processIdentification()) changed = true;
 
   if (isOwned("auto_curator")) {
     var resolved = state.tray.filter(function (e) { return e.identified; });
@@ -225,6 +287,17 @@ function tick() {
       }
       changed = true;
     });
+  }
+
+  var incomePerSec = passiveIncomePerSecond();
+  if (incomePerSec > 0) {
+    state.passiveAccrued = (state.passiveAccrued || 0) + incomePerSec * (TICK_MS / 1000);
+    var whole = Math.floor(state.passiveAccrued);
+    if (whole > 0) {
+      state.cash += whole;
+      state.passiveAccrued -= whole;
+      changed = true;
+    }
   }
 
   if (isOwned("auto_buy")) {

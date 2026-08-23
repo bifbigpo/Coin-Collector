@@ -13,7 +13,7 @@ var UPGRADES = [
   {
     id: "bigger_lots",
     name: "Bulk Buyer's Permit",
-    blurb: "Dealers let you buy in bigger volumes. +1 coin per lot.",
+    blurb: "Dealers let you buy in bigger volumes. +8% coins per lot.",
     type: "leveled",
     maxLevel: 5,
     baseCost: 5000,
@@ -22,11 +22,27 @@ var UPGRADES = [
   {
     id: "quick_sort",
     name: "Quick Fingers",
-    blurb: "Years of practice sorting change. Speeds up identifying coins.",
+    blurb: "Years of practice sorting change. Coins are identified faster.",
     type: "leveled",
     maxLevel: 8,
     baseCost: 1500,
     costMult: 1.5
+  },
+  {
+    id: "sorting_slots",
+    name: "Sorting Tray",
+    blurb: "A proper tray with room to work. Identify one more coin at a time per level.",
+    type: "leveled",
+    maxLevel: 6,
+    baseCost: 6000,
+    costMult: 1.8
+  },
+  {
+    id: "grading_kit",
+    name: "Grading Kit",
+    blurb: "A loupe, a reference guide, and a grading scale. Reveals the true grade -- and full value -- of every coin you identify. Without it, dealers lowball you on ungraded coins.",
+    type: "toggle",
+    baseCost: 15000
   },
   {
     id: "appraiser",
@@ -47,16 +63,18 @@ var UPGRADES = [
     costMult: 1.8
   },
   {
-    id: "auto_sort",
-    name: "Sorting Tray",
-    blurb: "A proper tray and good lighting. Coins get identified automatically.",
-    type: "toggle",
-    baseCost: 8000
+    id: "display_case",
+    name: "Display Cabinet",
+    blurb: "A glass cabinet for your collection. Visitors chip in to see it -- passive income that scales with coins collected.",
+    type: "leveled",
+    maxLevel: 10,
+    baseCost: 10000,
+    costMult: 1.9
   },
   {
     id: "auto_curator",
     name: "Curator's Ledger",
-    blurb: "A running record of what you need. Automatically keeps coins missing from your collection and sells the rest.",
+    blurb: "A running record of what you need. Automatically keeps coins missing from your collection and sells the rest once they're identified.",
     type: "toggle",
     baseCost: 25000
   },

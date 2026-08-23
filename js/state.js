@@ -1,14 +1,15 @@
-var SAVE_KEY = "coin_collector_save_v1";
+var SAVE_KEY = "coin_collector_save_v2";
 
 function defaultState() {
   return {
-    cash: 2000, // pence
-    selectedLot: "jar",
-    unlockedLots: { jar: true },
+    cash: 200, // pence -- enough for two £1 charity shop bags
+    selectedLot: "charity_bag",
+    unlockedLots: { charity_bag: true },
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
     collection: {}, // coinId -> true
-    tray: [], // { uid, coinId, identified }
+    tray: [], // { uid, coinId, identified, identifying, remainingMs, totalMs, grade }
     nextUid: 1,
+    passiveAccrued: 0, // fractional pence carried between ticks
     stats: {
       lotsBought: 0,
       coinsSorted: 0,
