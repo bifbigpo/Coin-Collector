@@ -174,7 +174,7 @@ function checkCollectionBonuses() {
   if (!state.fullCollectionBonusClaimed && COINS.every(function (c) { return state.collection[c.id]; })) {
     state.fullCollectionBonusClaimed = true;
     state.cash += 100000;
-    queueToast("British Coins album complete! +£1000.00 bonus, +15% sale bonus. More countries coming soon...");
+    queueToast("Penny album complete! +£1000.00 bonus, +15% sale bonus. More denominations coming soon...");
   }
 }
 
