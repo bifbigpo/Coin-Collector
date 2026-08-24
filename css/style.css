@@ -262,6 +262,23 @@ h2 {
   font-size: 1rem;
 }
 
+.pixel-coin {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  display: block;
+  margin: 0 auto;
+}
+
+.pixel-coin-lg { width: 48px; height: 48px; }
+.pixel-coin-sm { width: 32px; height: 32px; }
+
+.coin-name {
+  font-weight: 700;
+  font-size: 0.85rem;
+  margin-top: 2px;
+}
+
 .coin-label {
   color: var(--text-dim);
   font-size: 0.75rem;
