@@ -130,6 +130,10 @@ function renderTray() {
   var count = document.getElementById("tray-count");
   count.textContent = state.tray.length + " / " + MAX_TRAY;
 
+  document.querySelectorAll('[data-action="sort-tray"]').forEach(function (btn) {
+    btn.classList.toggle("btn-primary", btn.getAttribute("data-id") === state.traySortMode);
+  });
+
   if (!state.tray.length) {
     container.innerHTML = '<div class="empty-hint">Buy a lot to get coins to sort through.</div>';
   }

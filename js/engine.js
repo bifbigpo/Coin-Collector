@@ -348,29 +348,60 @@ function trayValueSortKey(entry) {
   return entry.identified ? coinSuggestedValue(entry) : -1;
 }
 
-// Same idea, ranked by grade instead of value -- graded coins by their true
-// grade, ungraded-but-identified coins primarily by the bottom of their
-// estimate (same cautious default used for pricing), unidentified coins
-// sink to the bottom. Ties on that floor (common at low grading skill,
-// where a wide estimate radius clamps many different coins to the same
-// bottom) are broken by the top of the estimate, so coins that could
-// plausibly grade higher still sort above ones that can't.
+// Ranked by grade -- graded coins by their true grade, ungraded-but-
+// identified coins by the bottom of their estimate (same cautious default
+// used for pricing), unidentified coins sink to the bottom.
 function trayGradeSortKey(entry) {
   if (!entry.identified) return -1;
-  var span = GRADES.length + 1;
-  if (isCoinGraded(entry)) {
-    var idx = GRADE_INDEX[entry.trueGrade];
-    return idx * span + idx;
-  }
-  var range = estimateRange(entry);
-  return range.lo * span + range.hi;
+  if (isCoinGraded(entry)) return GRADE_INDEX[entry.trueGrade];
+  return estimateRange(entry).lo;
+}
+
+// Tiebreaker for trayGradeSortKey: the top of the estimate. At low grading
+// skill the estimate radius is wide enough that most coins' bottom bound
+// clamps to the same floor (Poor), so sorting on the floor alone barely
+// moves anything -- breaking ties on the ceiling still favors coins that
+// could plausibly grade higher.
+function trayGradeSortKeyHi(entry) {
+  if (!entry.identified) return -1;
+  if (isCoinGraded(entry)) return GRADE_INDEX[entry.trueGrade];
+  return estimateRange(entry).hi;
+}
+
+// Coins still needed for the collection sort above duplicates; unidentified
+// coins sink to the bottom same as the other modes.
+function trayNeededSortKey(entry) {
+  if (!entry.identified) return -1;
+  return state.collection[entry.coinId] ? 0 : 1;
+}
+
+// The tray's sort modes: each is one or more key functions, most important
+// first -- entries are ranked by the first, ties broken by the next, and so
+// on. Selecting a mode from the toolbar re-sorts once and remembers the
+// choice (see sortTrayByMode) so its button stays highlighted.
+var TRAY_SORT_MODES = {
+  value:  { label: "Value",  keyFns: [trayValueSortKey] },
+  grade:  { label: "Grade",  keyFns: [trayGradeSortKey, trayGradeSortKeyHi] },
+  needed: { label: "Needed", keyFns: [trayNeededSortKey, trayValueSortKey] }
+};
+
+// Builds a descending comparator from key functions applied in order --
+// ties on one are broken by the next.
+function byKeysDesc(keyFns) {
+  return function (a, b) {
+    for (var i = 0; i < keyFns.length; i++) {
+      var diff = keyFns[i](b) - keyFns[i](a);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  };
 }
 
 // Reorders only the coins still sitting in the inspection tray (never the
 // ones already committed to the grade tray -- reordering those would change
 // which one grades next), highest key first. A one-off snapshot sort, not a
 // live-maintained order: it doesn't move again until sorted once more.
-function sortTray(keyFn) {
+function sortTray(compareFn) {
   var indices = [];
   var movable = [];
   state.tray.forEach(function (e, i) {
@@ -379,17 +410,16 @@ function sortTray(keyFn) {
       movable.push(e);
     }
   });
-  movable.sort(function (a, b) { return keyFn(b) - keyFn(a); });
+  movable.sort(compareFn);
   indices.forEach(function (idx, i) { state.tray[idx] = movable[i]; });
+}
+
+function sortTrayByMode(mode) {
+  var def = TRAY_SORT_MODES[mode];
+  if (!def) return;
+  sortTray(byKeysDesc(def.keyFns));
+  state.traySortMode = mode;
   saveState();
-}
-
-function sortTrayByValue() {
-  sortTray(trayValueSortKey);
-}
-
-function sortTrayByGrade() {
-  sortTray(trayGradeSortKey);
 }
 
 // The appraised value of everything currently banked for one penny type --
