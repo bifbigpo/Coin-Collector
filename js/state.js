@@ -1,4 +1,4 @@
-var SAVE_KEY = "coin_collector_save_v11";
+var SAVE_KEY = "coin_collector_save_v12";
 
 // A plain weighted pick with no rarity-luck multiplier -- used only for
 // the starting tray, which is built before `state` (and so any upgrades)
@@ -31,6 +31,8 @@ function buildStartingTray() {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
+      selected: false,
+      inGradeTray: false,
       grading: false,
       gradeRemainingMs: 0,
       graded: false,

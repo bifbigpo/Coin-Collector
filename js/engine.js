@@ -184,41 +184,73 @@ function gradeDisplayHTML(entry) {
   return gradeSpan(GRADES[range.lo]) + " – " + gradeSpan(GRADES[range.hi]);
 }
 
-// How many coins are currently sitting in the grade tray, actively being
-// graded -- the tray's capacity limits this, not the number of identified
-// coins waiting for a grade.
-function gradingTrayCount() {
-  return state.tray.filter(function (e) { return e.grading; }).length;
+// How many of the grade tray's slots are currently taken -- by a coin
+// still being graded, or one that's already graded and sitting there
+// waiting for the player to keep or sell it. Either way, the slot's held.
+function gradingTrayOccupiedCount() {
+  return state.tray.filter(function (e) { return e.inGradeTray; }).length;
 }
 
-function gradingTrayFull() {
-  return gradingTrayCount() >= GRADING_TRAY_CAPACITY;
+function gradingTraySpaceRemaining() {
+  return GRADING_TRAY_CAPACITY - gradingTrayOccupiedCount();
 }
 
-// The player ticks a coin over from the inspection tray into the grade
-// tray. Placing it there is the only action needed -- grading then starts
-// automatically and takes GRADE_DURATION_MS, no further clicks required.
-function startGrading(uid) {
+function selectedForGradingCount() {
+  return state.tray.filter(function (e) { return e.selected; }).length;
+}
+
+// Ticking a coin's checkbox in the inspection tray only marks it selected
+// -- it doesn't move yet. Selection is capped at however many grade tray
+// slots are actually free right now.
+function toggleSelectForGrading(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified || isCoinGraded(entry) || entry.grading) return false;
-  if (gradingTrayFull()) return false;
-  entry.grading = true;
-  entry.gradeRemainingMs = GRADE_DURATION_MS;
+  if (!entry || !entry.identified || isCoinGraded(entry) || entry.inGradeTray) return;
+  if (entry.selected) {
+    entry.selected = false;
+  } else {
+    if (selectedForGradingCount() >= gradingTraySpaceRemaining()) return;
+    entry.selected = true;
+  }
   saveState();
-  return true;
 }
 
-// Unticking a coin pulls it back out of the grade tray before it finishes,
-// freeing the slot for another coin.
+// Moves every selected coin into the grade tray at once -- this is the
+// only way coins start grading. Grading then runs on its own, no further
+// clicks required, taking GRADE_DURATION_MS per coin.
+function sendSelectedToGrading() {
+  var space = gradingTraySpaceRemaining();
+  var moved = false;
+  state.tray.forEach(function (e) {
+    if (!e.selected) return;
+    if (space > 0) {
+      e.inGradeTray = true;
+      e.grading = true;
+      e.gradeRemainingMs = GRADE_DURATION_MS;
+      space--;
+      moved = true;
+    }
+    e.selected = false;
+  });
+  if (moved) saveState();
+  return moved;
+}
+
+// Pulls a coin still being graded back out of the grade tray before it
+// finishes, freeing the slot -- it returns to the inspection tray to be
+// selected again later. Coins that have already finished grading aren't
+// cancelled this way; they're resolved with Keep/Replace/Sell instead.
 function cancelGrading(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.grading) return;
   entry.grading = false;
+  entry.inGradeTray = false;
   entry.gradeRemainingMs = 0;
   saveState();
 }
 
-// Advances every coin currently sitting in the grade tray.
+// Advances every coin currently being graded. Finished coins stay put in
+// the grade tray -- graded, but still occupying their slot -- until the
+// player keeps, replaces, or sells them.
 function processGradingTray() {
   var didWork = false;
   state.tray.forEach(function (e) {
@@ -288,6 +320,8 @@ function buyLot(lotId) {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
+      selected: false,
+      inGradeTray: false,
       grading: false,
       gradeRemainingMs: 0,
       graded: false,
