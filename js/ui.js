@@ -168,7 +168,8 @@ function renderTray() {
       }
       el.className = "coin-slot identified rarity-" + coin.rarity;
       el.innerHTML =
-        '<div class="coin-face">' + coin.name + '</div>' +
+        '<div class="coin-face">' + pixelCoinImgHTML(coin, graded ? entry.trueGrade : null, "pixel-coin-lg") + '</div>' +
+        '<div class="coin-name">' + coin.name + '</div>' +
         '<div class="coin-label">' + coin.subtitle + '</div>' +
         '<div class="coin-rarity">' + RARITY[coin.rarity].label + (owned ? " · Duplicate" : " · Needed") + '</div>' +
         gradeBlock +
@@ -221,7 +222,8 @@ function renderCollection() {
       slot.className = "collection-slot" + (owned ? " owned rarity-" + coin.rarity : " unknown");
       slot.title = owned ? coin.name + " - " + coin.subtitle : "Not yet found";
       slot.innerHTML = owned
-        ? '<div class="coin-face">' + coin.name + '</div><div class="coin-label">' + coin.subtitle + '</div>' +
+        ? '<div class="coin-face">' + pixelCoinImgHTML(coin, state.collection[coin.id].trueGrade, "pixel-coin-sm") + '</div>' +
+          '<div class="coin-label">' + coin.subtitle + '</div>' +
           '<div class="collection-grade">' + gradeDisplayHTML(state.collection[coin.id]) + '</div>'
         : '<div class="coin-face">?</div>';
       grid.appendChild(slot);
