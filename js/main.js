@@ -11,7 +11,8 @@ function handleClick(e) {
     case "buy-upgrade": buyUpgrade(id); break;
     case "keep-coin": keepCoin(uid); break;
     case "replace-coin": replaceCoin(uid); break;
-    case "grade-coin": gradeCoin(uid); break;
+    case "start-grading": startGrading(uid); break;
+    case "cancel-grading": cancelGrading(uid); break;
     case "sell-coin": sellCoin(uid); break;
     case "sell-duplicates": sellAllDuplicates(); break;
     case "keep-needed": keepAllNeeded(); break;

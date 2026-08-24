@@ -1,7 +1,8 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 1000;
-var GRADE_DURATION_MS = 1000;
+var GRADE_DURATION_MS = 3000;
+var GRADING_TRAY_CAPACITY = 5;
 
 // Standard numismatic grading scale, roughest to finest. Each tier gets a
 // rainbow color, red (Poor) through violet (Mint), for the grade labels.
@@ -63,7 +64,7 @@ function isAutoSpotted(entry) {
 // it's either been examined by hand or is obviously within a grade band
 // the player can now recognise on sight.
 function isCoinGraded(entry) {
-  return entry.manuallyGraded || isAutoSpotted(entry);
+  return entry.graded || isAutoSpotted(entry);
 }
 
 function getLevel(upgradeId) {
@@ -183,19 +184,42 @@ function gradeDisplayHTML(entry) {
   return gradeSpan(GRADES[range.lo]) + " – " + gradeSpan(GRADES[range.hi]);
 }
 
-// A player's active choice to examine one coin closely -- takes a second,
-// then reveals its exact grade and builds grading experience.
-function gradeCoin(uid) {
+// How many coins are currently sitting in the grade tray, actively being
+// graded -- the tray's capacity limits this, not the number of identified
+// coins waiting for a grade.
+function gradingTrayCount() {
+  return state.tray.filter(function (e) { return e.grading; }).length;
+}
+
+function gradingTrayFull() {
+  return gradingTrayCount() >= GRADING_TRAY_CAPACITY;
+}
+
+// The player ticks a coin over from the inspection tray into the grade
+// tray. Placing it there is the only action needed -- grading then starts
+// automatically and takes GRADE_DURATION_MS, no further clicks required.
+function startGrading(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified || isCoinGraded(entry) || entry.grading) return;
+  if (!entry || !entry.identified || isCoinGraded(entry) || entry.grading) return false;
+  if (gradingTrayFull()) return false;
   entry.grading = true;
   entry.gradeRemainingMs = GRADE_DURATION_MS;
   saveState();
+  return true;
 }
 
-// Advances in-progress manual grading. Unlike identification, there's no
-// slot limit -- examining one coin doesn't stop you starting another.
-function processManualGrading() {
+// Unticking a coin pulls it back out of the grade tray before it finishes,
+// freeing the slot for another coin.
+function cancelGrading(uid) {
+  var entry = findTrayEntry(uid);
+  if (!entry || !entry.grading) return;
+  entry.grading = false;
+  entry.gradeRemainingMs = 0;
+  saveState();
+}
+
+// Advances every coin currently sitting in the grade tray.
+function processGradingTray() {
   var didWork = false;
   state.tray.forEach(function (e) {
     if (e.grading) {
@@ -203,7 +227,7 @@ function processManualGrading() {
       didWork = true;
       if (e.gradeRemainingMs <= 0) {
         e.grading = false;
-        e.manuallyGraded = true;
+        e.graded = true;
         state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
         state.stats.coinsGraded++;
       }
@@ -266,7 +290,7 @@ function buyLot(lotId) {
       totalMs: 0,
       grading: false,
       gradeRemainingMs: 0,
-      manuallyGraded: false,
+      graded: false,
       trueGrade: null,
       gradeCap: lot.gradeCap || null
     });
@@ -292,7 +316,7 @@ function keepCoin(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.identified || !isCoinGraded(entry)) return;
   if (!state.collection[entry.coinId]) {
-    state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
+    state.collection[entry.coinId] = { trueGrade: entry.trueGrade, graded: entry.graded };
     state.stats.coinsKept++;
     checkCollectionBonuses();
     checkCollectionQualityBonus();
@@ -315,11 +339,11 @@ function replaceCoin(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.identified || !isCoinGraded(entry) || !coinIsUpgrade(entry)) return;
   var owned = state.collection[entry.coinId];
-  var oldValue = coinSellValue({ coinId: entry.coinId, trueGrade: owned.trueGrade, manuallyGraded: owned.manuallyGraded });
+  var oldValue = coinSellValue({ coinId: entry.coinId, trueGrade: owned.trueGrade, graded: owned.graded });
   state.cash += oldValue;
   state.stats.coinsSold++;
   state.stats.cashEarnedFromSelling += oldValue;
-  state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
+  state.collection[entry.coinId] = { trueGrade: entry.trueGrade, graded: entry.graded };
   checkCollectionQualityBonus();
   removeTrayEntry(uid);
   saveState();
@@ -503,7 +527,7 @@ function tick() {
   });
 
   if (processIdentification()) changed = true;
-  if (processManualGrading()) changed = true;
+  if (processGradingTray()) changed = true;
 
   if (isOwned("auto_curator")) {
     var resolved = state.tray.filter(function (e) { return e.identified; });

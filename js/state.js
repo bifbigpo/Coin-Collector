@@ -1,4 +1,4 @@
-var SAVE_KEY = "coin_collector_save_v10";
+var SAVE_KEY = "coin_collector_save_v11";
 
 // A plain weighted pick with no rarity-luck multiplier -- used only for
 // the starting tray, which is built before `state` (and so any upgrades)
@@ -33,7 +33,7 @@ function buildStartingTray() {
       totalMs: 0,
       grading: false,
       gradeRemainingMs: 0,
-      manuallyGraded: false,
+      graded: false,
       trueGrade: null,
       gradeCap: STARTING_ESTATE.gradeCap || null
     });
@@ -47,8 +47,8 @@ function defaultState() {
     cash: 100, // pence -- enough for one more £1 charity bag on top of the free estate find
     selectedLot: "decimal_bag",
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
-    collection: {}, // coinId -> { trueGrade, manuallyGraded }
-    tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, grading, gradeRemainingMs, manuallyGraded, trueGrade, gradeCap }
+    collection: {}, // coinId -> { trueGrade, graded }
+    tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, grading, gradeRemainingMs, graded, trueGrade, gradeCap }
     nextUid: startingTray.length + 1,
     passiveAccrued: 0, // fractional pence carried between ticks
     lotCooldowns: {}, // lotId -> ms remaining
