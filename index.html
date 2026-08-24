@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coin Collector — British Pennies</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-left">
+      <h1>Coin Collector</h1>
+      <div class="subtitle">British Pennies, Victoria to date</div>
+    </div>
+    <div class="header-right">
+      <div id="cash-display" class="cash-display">£0.00</div>
+      <div id="stat-line" class="stat-line"></div>
+      <button class="btn btn-outline btn-small" data-action="reset-save">Reset</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel shop-panel">
+      <h2>Buy Coins</h2>
+      <div id="lot-list" class="card-list"></div>
+      <h2>Upgrades</h2>
+      <div id="upgrade-list" class="card-list"></div>
+    </section>
+
+    <section class="panel tray-panel">
+      <div class="tray-header">
+        <h2>Sorting Tray <span id="tray-count" class="tray-count"></span></h2>
+        <div class="tray-actions">
+          <button id="check-change-btn" class="btn btn-small btn-primary" data-action="buy-lot" data-id="check_change">Check Your Change (Free)</button>
+          <button class="btn btn-small" data-action="keep-needed">Keep Needed</button>
+          <button class="btn btn-small btn-outline" data-action="sell-duplicates">Sell Duplicates</button>
+        </div>
+      </div>
+      <div id="tray-list" class="tray-grid"></div>
+    </section>
+
+    <section class="panel collection-panel">
+      <h2>Collection Album</h2>
+      <div id="collection-groups"></div>
+    </section>
+  </main>
+
+  <div id="toasts" class="toasts"></div>
+
+  <script src="js/coins.js"></script>
+  <script src="js/lots.js"></script>
+  <script src="js/upgrades.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

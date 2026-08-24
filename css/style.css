@@ -1,0 +1,407 @@
+:root {
+  --bg: #14171c;
+  --panel: #1c2129;
+  --card: #232a34;
+  --border: #333c49;
+  --text: #e8ebf0;
+  --text-dim: #8b93a1;
+  --accent: #d4af37;
+  --accent-dim: #a4842a;
+  --green: #4caf72;
+  --red: #d9534f;
+
+  --c-common: #9aa4b2;
+  --c-uncommon: #4caf72;
+  --c-rare: #4a90d9;
+  --c-veryrare: #a463d9;
+  --c-legendary: #d4af37;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1, h2 {
+  margin: 0;
+  font-weight: 600;
+}
+
+h2 {
+  font-size: 1rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 20px 0 10px;
+}
+
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-left h1 { font-size: 1.3rem; }
+.subtitle { color: var(--text-dim); font-size: 0.8rem; }
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.cash-display {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.stat-line {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr 320px;
+  gap: 16px;
+  padding: 16px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.card.selected {
+  border-color: var(--accent);
+}
+
+.card.locked {
+  opacity: 0.75;
+}
+
+.card-title {
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-blurb {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin: 4px 0 8px;
+}
+
+.card-meta {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-bottom: 8px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.level-badge {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  background: var(--bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  flex: 1;
+}
+
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.btn-primary {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.btn-outline {
+  background: transparent;
+}
+
+.btn-small {
+  padding: 5px 8px;
+  font-size: 0.78rem;
+  flex: none;
+}
+
+.tray-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tray-count {
+  color: var(--text-dim);
+  font-weight: 400;
+  font-size: 0.8rem;
+}
+
+.tray-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tray-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.empty-hint {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  grid-column: 1 / -1;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.coin-slot {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coin-slot.unidentified,
+.coin-slot.identifying {
+  justify-content: center;
+  align-items: center;
+  min-height: 90px;
+}
+
+.coin-slot.unidentified .coin-face,
+.coin-slot.identifying .coin-face {
+  font-size: 1.6rem;
+  color: var(--text-dim);
+}
+
+.coin-slot.queued {
+  opacity: 0.6;
+}
+
+.coin-slot.identifying {
+  border-style: dashed;
+}
+
+.progress-track {
+  width: 100%;
+  height: 5px;
+  background: var(--bg);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.25s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill { transition: none; }
+}
+
+.coin-face {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.coin-label {
+  color: var(--text-dim);
+  font-size: 0.75rem;
+}
+
+.coin-rarity {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.coin-grade {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.coin-grade-unknown {
+  font-weight: 400;
+  font-style: italic;
+}
+
+/* Grade scale, red (Poor) through violet (Mint) -- tuned for legibility
+   against the dark card background rather than a strict even spectrum. */
+.grade-poor  { color: hsl(0, 72%, 62%); }
+.grade-fair  { color: hsl(25, 75%, 58%); }
+.grade-good  { color: hsl(48, 75%, 58%); }
+.grade-vgood { color: hsl(85, 55%, 58%); }
+.grade-fine  { color: hsl(135, 45%, 58%); }
+.grade-vfine { color: hsl(172, 50%, 55%); }
+.grade-efine { color: hsl(200, 65%, 65%); }
+.grade-unc   { color: hsl(230, 65%, 74%); }
+.grade-mint  { color: hsl(268, 60%, 76%); }
+
+.coin-suggested {
+  color: var(--text-dim);
+  font-size: 0.68rem;
+  margin-top: -2px;
+}
+
+.coin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.rarity-Common { border-left: 3px solid var(--c-common); }
+.rarity-Uncommon { border-left: 3px solid var(--c-uncommon); }
+.rarity-Rare { border-left: 3px solid var(--c-rare); }
+.rarity-VeryRare { border-left: 3px solid var(--c-veryrare); }
+.rarity-Legendary { border-left: 3px solid var(--c-legendary); box-shadow: 0 0 10px rgba(212,175,55,0.3); }
+
+.collection-group {
+  margin-bottom: 18px;
+}
+
+.group-title {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.group-title .grade-poor, .group-title .grade-fair, .group-title .grade-good,
+.group-title .grade-vgood, .group-title .grade-fine, .group-title .grade-vfine,
+.group-title .grade-efine, .group-title .grade-unc, .group-title .grade-mint {
+  font-weight: 600;
+}
+
+.complete-badge {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+}
+
+.collection-slot {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 4px;
+  text-align: center;
+  min-height: 46px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.collection-slot.unknown {
+  opacity: 0.4;
+}
+
+.collection-slot .coin-face {
+  font-size: 0.75rem;
+}
+
+.collection-slot .coin-label {
+  font-size: 0.62rem;
+}
+
+.collection-grade {
+  font-size: 0.6rem;
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.toasts {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+}
+
+.toast {
+  background: var(--card);
+  border: 1px solid var(--accent);
+  color: var(--text);
+  padding: 10px 14px;
+  border-radius: 8px;
+  max-width: 320px;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.toast-out {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast { transition: none; }
+}
