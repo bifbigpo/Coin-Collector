@@ -1,7 +1,8 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 1000;
-var GRADE_DURATION_MS = 1000;
+var GRADE_DURATION_MS = 5000;
+var GRADING_TRAY_CAPACITY = 5;
 
 // Standard numismatic grading scale, roughest to finest. Each tier gets a
 // rainbow color, red (Poor) through violet (Mint), for the grade labels.
@@ -63,7 +64,7 @@ function isAutoSpotted(entry) {
 // it's either been examined by hand or is obviously within a grade band
 // the player can now recognise on sight.
 function isCoinGraded(entry) {
-  return entry.manuallyGraded || isAutoSpotted(entry);
+  return entry.graded || isAutoSpotted(entry);
 }
 
 function getLevel(upgradeId) {
@@ -183,32 +184,102 @@ function gradeDisplayHTML(entry) {
   return gradeSpan(GRADES[range.lo]) + " – " + gradeSpan(GRADES[range.hi]);
 }
 
-// A player's active choice to examine one coin closely -- takes a second,
-// then reveals its exact grade and builds grading experience.
-function gradeCoin(uid) {
+// How many of the grade tray's slots are currently taken -- by a coin
+// still being graded, or one that's already graded and sitting there
+// waiting for the player to keep or sell it. Either way, the slot's held.
+function gradingTrayOccupiedCount() {
+  return state.tray.filter(function (e) { return e.inGradeTray; }).length;
+}
+
+function gradingTraySpaceRemaining() {
+  return GRADING_TRAY_CAPACITY - gradingTrayOccupiedCount();
+}
+
+function selectedForGradingCount() {
+  return state.tray.filter(function (e) { return e.selected; }).length;
+}
+
+// Ticking a coin's checkbox in the inspection tray only marks it selected
+// -- it doesn't move yet. Selection is capped at however many grade tray
+// slots are actually free right now.
+function toggleSelectForGrading(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.identified || isCoinGraded(entry) || entry.grading) return;
-  entry.grading = true;
-  entry.gradeRemainingMs = GRADE_DURATION_MS;
+  if (!entry || !entry.identified || isCoinGraded(entry) || entry.inGradeTray) return;
+  if (entry.selected) {
+    entry.selected = false;
+  } else {
+    if (selectedForGradingCount() >= gradingTraySpaceRemaining()) return;
+    entry.selected = true;
+  }
   saveState();
 }
 
-// Advances in-progress manual grading. Unlike identification, there's no
-// slot limit -- examining one coin doesn't stop you starting another.
-function processManualGrading() {
-  var didWork = false;
+// Moves every selected coin into the grade tray at once, filling its
+// slots -- but the tray only grades one coin at a time. The rest sit
+// queued in their slot until it's their turn.
+function sendSelectedToGrading() {
+  var space = gradingTraySpaceRemaining();
+  var moved = false;
   state.tray.forEach(function (e) {
-    if (e.grading) {
-      e.gradeRemainingMs -= TICK_MS;
-      didWork = true;
-      if (e.gradeRemainingMs <= 0) {
-        e.grading = false;
-        e.manuallyGraded = true;
-        state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
-        state.stats.coinsGraded++;
-      }
+    if (!e.selected) return;
+    if (space > 0) {
+      e.inGradeTray = true;
+      space--;
+      moved = true;
     }
+    e.selected = false;
   });
+  if (moved) startNextGrading();
+  if (moved) saveState();
+  return moved;
+}
+
+// If nothing is actively being graded, starts the next queued coin (the
+// one that's been sitting in the grade tray longest). Grading then takes
+// GRADE_DURATION_MS, no further clicks required.
+function startNextGrading() {
+  if (state.tray.some(function (e) { return e.grading; })) return false;
+  var next = state.tray.find(function (e) { return e.inGradeTray && !e.grading && !e.graded; });
+  if (!next) return false;
+  next.grading = true;
+  next.gradeRemainingMs = GRADE_DURATION_MS;
+  return true;
+}
+
+// Pulls a coin out of the grade tray before it's graded -- whether it's
+// the one actively counting down or still queued behind it -- freeing its
+// slot and returning it to the inspection tray to be selected again
+// later. Coins that have already finished grading aren't cancelled this
+// way; they're resolved with Keep/Replace/Sell instead.
+function cancelGrading(uid) {
+  var entry = findTrayEntry(uid);
+  if (!entry || !entry.inGradeTray || entry.graded) return;
+  var wasActive = entry.grading;
+  entry.grading = false;
+  entry.inGradeTray = false;
+  entry.gradeRemainingMs = 0;
+  if (wasActive) startNextGrading();
+  saveState();
+}
+
+// Advances whichever coin is actively being graded, then starts the next
+// queued one the moment a slot frees up. Finished coins stay put in the
+// grade tray -- graded, but still occupying their slot -- until the
+// player keeps, replaces, or sells them.
+function processGradingTray() {
+  var didWork = false;
+  var active = state.tray.filter(function (e) { return e.grading; })[0];
+  if (active) {
+    active.gradeRemainingMs -= TICK_MS;
+    didWork = true;
+    if (active.gradeRemainingMs <= 0) {
+      active.grading = false;
+      active.graded = true;
+      state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
+      state.stats.coinsGraded++;
+    }
+  }
+  if (startNextGrading()) didWork = true;
   return didWork;
 }
 
@@ -264,9 +335,11 @@ function buyLot(lotId) {
       identifying: false,
       remainingMs: 0,
       totalMs: 0,
+      selected: false,
+      inGradeTray: false,
       grading: false,
       gradeRemainingMs: 0,
-      manuallyGraded: false,
+      graded: false,
       trueGrade: null,
       gradeCap: lot.gradeCap || null
     });
@@ -292,7 +365,7 @@ function keepCoin(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.identified || !isCoinGraded(entry)) return;
   if (!state.collection[entry.coinId]) {
-    state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
+    state.collection[entry.coinId] = { trueGrade: entry.trueGrade, graded: entry.graded };
     state.stats.coinsKept++;
     checkCollectionBonuses();
     checkCollectionQualityBonus();
@@ -315,11 +388,11 @@ function replaceCoin(uid) {
   var entry = findTrayEntry(uid);
   if (!entry || !entry.identified || !isCoinGraded(entry) || !coinIsUpgrade(entry)) return;
   var owned = state.collection[entry.coinId];
-  var oldValue = coinSellValue({ coinId: entry.coinId, trueGrade: owned.trueGrade, manuallyGraded: owned.manuallyGraded });
+  var oldValue = coinSellValue({ coinId: entry.coinId, trueGrade: owned.trueGrade, graded: owned.graded });
   state.cash += oldValue;
   state.stats.coinsSold++;
   state.stats.cashEarnedFromSelling += oldValue;
-  state.collection[entry.coinId] = { trueGrade: entry.trueGrade, manuallyGraded: entry.manuallyGraded };
+  state.collection[entry.coinId] = { trueGrade: entry.trueGrade, graded: entry.graded };
   checkCollectionQualityBonus();
   removeTrayEntry(uid);
   saveState();
@@ -503,7 +576,7 @@ function tick() {
   });
 
   if (processIdentification()) changed = true;
-  if (processManualGrading()) changed = true;
+  if (processGradingTray()) changed = true;
 
   if (isOwned("auto_curator")) {
     var resolved = state.tray.filter(function (e) { return e.identified; });

@@ -325,6 +325,50 @@ h2 {
   margin-top: 4px;
 }
 
+.grade-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.grade-check.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.inspection-tray-header {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.grading-tray-grid {
+  margin-top: 10px;
+}
+
+.coin-slot.grading-slot {
+  border-style: dashed;
+}
+
+.coin-slot.grading-slot.empty {
+  justify-content: center;
+  align-items: center;
+  min-height: 90px;
+  opacity: 0.5;
+}
+
+.coin-slot.grading-slot.empty .coin-face {
+  font-size: 1.4rem;
+  color: var(--text-dim);
+}
+
+.coin-slot.grading-slot.queued {
+  opacity: 0.6;
+}
+
 .rarity-Common { border-left: 3px solid var(--c-common); }
 .rarity-Uncommon { border-left: 3px solid var(--c-uncommon); }
 .rarity-Rare { border-left: 3px solid var(--c-rare); }
