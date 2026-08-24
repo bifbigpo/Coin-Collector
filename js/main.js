@@ -13,7 +13,8 @@ function handleClick(e) {
     case "replace-coin": replaceCoin(uid); break;
     case "toggle-select-grading": toggleSelectForGrading(uid); break;
     case "send-selected-to-grading": sendSelectedToGrading(); break;
-    case "toggle-sort-value": traySortByValue = !traySortByValue; break;
+    case "sort-value": sortTrayByValue(); break;
+    case "sort-grade": sortTrayByGrade(); break;
     case "cancel-grading": cancelGrading(uid); break;
     case "sell-coin": sellCoin(uid); break;
     case "sell-duplicates": sellAllDuplicates(); break;

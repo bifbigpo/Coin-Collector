@@ -43,6 +43,7 @@ function renderHeader() {
     (nextTier ? " (" + xp + "/" + nextTier.xp + " XP)" : " (max)");
   document.getElementById("stat-line").textContent =
     owned + " / " + COINS.length + " coins collected · " + groups + " / " + totalGroups + " sets complete · " +
+    "collection value " + formatMoney(totalCollectionValue()) + " · " +
     "sale value " + Math.round(sellMultiplier() * 100) + "%" + skillPart;
 }
 
@@ -123,29 +124,11 @@ function renderUpgrades() {
   });
 }
 
-// Whether the Inspection Tray is currently displayed sorted by value --
-// a display-only preference, not persisted with the save.
-var traySortByValue = false;
-
-// Identified coins sort highest suggested value first, so the player can
-// see at a glance which are worth grading. Coins not yet identified have
-// no visible value, so they're always treated as lowest and sink to the
-// bottom, keeping their relative (queue) order among themselves.
-function traySortKey(entry) {
-  return entry.identified ? coinSuggestedValue(entry) : -1;
-}
-
 function renderTray() {
   var container = document.getElementById("tray-list");
   container.innerHTML = "";
   var count = document.getElementById("tray-count");
   count.textContent = state.tray.length + " / " + MAX_TRAY;
-
-  var sortBtn = document.getElementById("sort-value-btn");
-  if (sortBtn) {
-    sortBtn.classList.toggle("btn-primary", traySortByValue);
-    sortBtn.textContent = traySortByValue ? "Sorted by Value ✓" : "Sort by Value";
-  }
 
   if (!state.tray.length) {
     container.innerHTML = '<div class="empty-hint">Buy a lot to get coins to sort through.</div>';
@@ -157,9 +140,6 @@ function renderTray() {
   var selectedCount = selectedForGradingCount();
   var canSelectMore = selectedCount < space;
   var visibleEntries = state.tray.filter(function (entry) { return !entry.inGradeTray; });
-  if (traySortByValue) {
-    visibleEntries = visibleEntries.slice().sort(function (a, b) { return traySortKey(b) - traySortKey(a); });
-  }
   visibleEntries.forEach(function (entry) {
     var el = document.createElement("div");
     if (entry.identifying) {
@@ -305,6 +285,7 @@ function renderCollection() {
     var complete = ownedCount === coinsInGroup.length;
     section.innerHTML = '<div class="group-title">' + group.label + " (" + ownedCount + "/" + coinsInGroup.length + ")" +
       (complete ? ' <span class="complete-badge">Complete</span>' : "") +
+      " · value " + formatMoney(collectionValueForGroup(group.id)) +
       groupQualityHTML(group.id) + "</div>";
     var grid = document.createElement("div");
     grid.className = "collection-grid";

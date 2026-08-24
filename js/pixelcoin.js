@@ -108,13 +108,16 @@ function groupDetailPixels(groupId) {
 
 // The alloy switched from bronze to copper-plated steel in 1992 -- reuse
 // that real cutoff so the pixel color matches the coin's actual material.
+// It's still a steel core, but what you actually see is the copper plating,
+// so post-1992 coins get their own (brighter, pinker) copper tone rather
+// than the grey/silver a bare steel coin would have.
 function coinMaterial(coin) {
-  return coin.year >= 1992 ? "steel" : "bronze";
+  return coin.year >= 1992 ? "copper_plated" : "bronze";
 }
 
 var MATERIAL_COLORS = {
-  bronze: { face: [178, 98, 40], rim: [110, 58, 22], shade: [90, 46, 16], accent: [222, 176, 96], shine: [232, 175, 110] },
-  steel:  { face: [176, 182, 190], rim: [110, 116, 124], shade: [86, 90, 98], accent: [214, 219, 224], shine: [225, 230, 236] }
+  bronze:        { face: [178, 98, 40], rim: [110, 58, 22], shade: [90, 46, 16], accent: [222, 176, 96], shine: [232, 175, 110] },
+  copper_plated: { face: [200, 112, 58], rim: [130, 70, 30], shade: [100, 54, 24], accent: [236, 160, 96], shine: [250, 190, 130] }
 };
 
 var RARITY_RING = {
@@ -134,6 +137,18 @@ function gradeQuality01(gradeId) {
 }
 
 function rgb(c) { return "rgb(" + c[0] + "," + c[1] + "," + c[2] + ")"; }
+
+// Experiment: a Poor-grade coin from before 1970 gets a spot of green
+// patina worked into its portrait -- oxidised copper toning that collects
+// in the engraved detail of old, heavily-worn coins.
+var PATINA_COLOR = [90, 133, 96];
+function applyPatina(color) {
+  return [
+    Math.round(color[0] * 0.35 + PATINA_COLOR[0] * 0.65),
+    Math.round(color[1] * 0.35 + PATINA_COLOR[1] * 0.65),
+    Math.round(color[2] * 0.35 + PATINA_COLOR[2] * 0.65)
+  ];
+}
 
 function pixelCoinDataUrl(coin, gradeId) {
   var key = coin.group + "|" + coin.year + "|" + (gradeId || "u") + "|" + coin.rarity;
@@ -157,6 +172,7 @@ function pixelCoinDataUrl(coin, gradeId) {
   // deliberate glint sweep instead, drawn after this pass.
   var isShiny = gradeId === "unc" || gradeId === "mint";
   var flickChance = !isShiny && quality > 0.55 ? 0.25 * (quality - 0.55) / 0.45 : 0;
+  var hasPatina = gradeId === "poor" && coin.year < 1970;
 
   COIN_MASK.forEach(function (px) {
     var x = px.x, y = px.y;
@@ -175,6 +191,7 @@ function pixelCoinDataUrl(coin, gradeId) {
       color = mat.face;
     }
 
+    if (hasPatina && isDetail && !px.rim) color = applyPatina(color);
     if (!px.rim && !isDetail && wearChance && wearRand() < wearChance) color = mat.shade;
     if (!px.rim && !isDetail && x < 8 && y < 7 && flickChance && wearRand() < flickChance) color = mat.shine;
 
