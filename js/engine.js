@@ -235,7 +235,7 @@ function lotCooldownRemaining(lotId) {
 
 function buyLot(lotId) {
   var lot = LOTS_BY_ID[lotId];
-  if (!lot || !state.unlockedLots[lotId]) return false;
+  if (!lot) return false;
   if (lot.cooldownMs && lotCooldownRemaining(lotId) > 0) return false;
   var cost = lotCost(lot);
   var count = lotCoinCount(lot);
@@ -243,9 +243,20 @@ function buyLot(lotId) {
   if (state.tray.length + count > MAX_TRAY) return false;
 
   var pool = buildLotPool(lot);
+  // A lot's guaranteed count is always drawn from the rarity-filtered
+  // sub-pool first, so pricier lots deliver a more curated, less random
+  // outcome instead of just more coins. Falls back to the normal pool if
+  // scaling (bigger_lots) ever shrinks count below the guaranteed floor.
+  var guaranteedCount = 0;
+  var guaranteedPool = null;
+  if (lot.guaranteed) {
+    guaranteedPool = buildLotPool(lot, lot.guaranteed.minRarity);
+    guaranteedCount = Math.min(lot.guaranteed.count, count);
+  }
   state.cash -= cost;
   for (var i = 0; i < count; i++) {
-    var coinId = weightedPick(pool);
+    var useGuaranteed = i < guaranteedCount && guaranteedPool && Object.keys(guaranteedPool).length;
+    var coinId = weightedPick(useGuaranteed ? guaranteedPool : pool);
     state.tray.push({
       uid: state.nextUid++,
       coinId: coinId,
@@ -262,16 +273,6 @@ function buyLot(lotId) {
   }
   state.stats.lotsBought++;
   if (lot.cooldownMs) state.lotCooldowns[lotId] = lot.cooldownMs;
-  saveState();
-  return true;
-}
-
-function unlockLot(lotId) {
-  var lot = LOTS_BY_ID[lotId];
-  if (!lot || state.unlockedLots[lotId]) return false;
-  if (state.cash < lot.unlockCost) return false;
-  state.cash -= lot.unlockCost;
-  state.unlockedLots[lotId] = true;
   saveState();
   return true;
 }
@@ -530,9 +531,7 @@ function tick() {
 
   if (isOwned("auto_buy")) {
     var lot = LOTS_BY_ID[state.selectedLot];
-    if (lot && state.unlockedLots[lot.id]) {
-      if (buyLot(lot.id)) changed = true;
-    }
+    if (lot && buyLot(lot.id)) changed = true;
   }
 
   if (changed) {
