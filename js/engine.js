@@ -349,12 +349,21 @@ function trayValueSortKey(entry) {
 }
 
 // Same idea, ranked by grade instead of value -- graded coins by their true
-// grade, ungraded-but-identified coins by the bottom of their estimate (same
-// cautious default used for pricing), unidentified coins sink to the bottom.
+// grade, ungraded-but-identified coins primarily by the bottom of their
+// estimate (same cautious default used for pricing), unidentified coins
+// sink to the bottom. Ties on that floor (common at low grading skill,
+// where a wide estimate radius clamps many different coins to the same
+// bottom) are broken by the top of the estimate, so coins that could
+// plausibly grade higher still sort above ones that can't.
 function trayGradeSortKey(entry) {
   if (!entry.identified) return -1;
-  if (isCoinGraded(entry)) return GRADE_INDEX[entry.trueGrade];
-  return estimateRange(entry).lo;
+  var span = GRADES.length + 1;
+  if (isCoinGraded(entry)) {
+    var idx = GRADE_INDEX[entry.trueGrade];
+    return idx * span + idx;
+  }
+  var range = estimateRange(entry);
+  return range.lo * span + range.hi;
 }
 
 // Reorders only the coins still sitting in the inspection tray (never the
