@@ -36,8 +36,6 @@ function renderHeader() {
   var groups = claimedGroupCount();
   var totalGroups = COIN_GROUPS.length;
   var owned = Object.keys(state.collection).length;
-  var passive = passiveIncomePerSecond();
-  var passivePart = passive > 0 ? " · " + formatMoney(passive) + "/sec passive" : "";
   var skillLevel = gradingSkillLevel();
   var xp = state.gradingXp || 0;
   var nextTier = SKILL_TIERS[skillLevel + 1];
@@ -45,7 +43,7 @@ function renderHeader() {
     (nextTier ? " (" + xp + "/" + nextTier.xp + " XP)" : " (max)");
   document.getElementById("stat-line").textContent =
     owned + " / " + COINS.length + " coins collected · " + groups + " / " + totalGroups + " sets complete · " +
-    "sale value " + Math.round(sellMultiplier() * 100) + "%" + skillPart + passivePart;
+    "sale value " + Math.round(sellMultiplier() * 100) + "%" + skillPart;
 }
 
 function renderShop() {
@@ -95,13 +93,20 @@ function renderUpgrades() {
 
     if (def.type === "toggle") {
       var owned = isOwned(def.id);
+      var locked = def.requires && !isOwned(def.requires);
+      var action;
+      if (owned) {
+        action = '<div class="card-meta">Owned</div>';
+      } else if (locked) {
+        action = '<div class="card-meta">Requires ' + UPGRADES_BY_ID[def.requires].name + '</div>';
+      } else {
+        action = '<button class="btn" data-action="buy-upgrade" data-id="' + def.id + '"' +
+          (state.cash < def.baseCost ? " disabled" : "") + ">Buy for " + formatMoney(def.baseCost) + "</button>";
+      }
       card.innerHTML =
         '<div class="card-title">' + def.name + (owned ? " ✓" : "") + "</div>" +
         '<div class="card-blurb">' + def.blurb + "</div>" +
-        (owned
-          ? '<div class="card-meta">Owned</div>'
-          : '<button class="btn" data-action="buy-upgrade" data-id="' + def.id + '"' +
-            (state.cash < def.baseCost ? " disabled" : "") + ">Buy for " + formatMoney(def.baseCost) + "</button>");
+        action;
     } else {
       var level = getLevel(def.id);
       var maxed = level >= def.maxLevel;
@@ -118,11 +123,29 @@ function renderUpgrades() {
   });
 }
 
+// Whether the Inspection Tray is currently displayed sorted by value --
+// a display-only preference, not persisted with the save.
+var traySortByValue = false;
+
+// Identified coins sort highest suggested value first, so the player can
+// see at a glance which are worth grading. Coins not yet identified have
+// no visible value, so they're always treated as lowest and sink to the
+// bottom, keeping their relative (queue) order among themselves.
+function traySortKey(entry) {
+  return entry.identified ? coinSuggestedValue(entry) : -1;
+}
+
 function renderTray() {
   var container = document.getElementById("tray-list");
   container.innerHTML = "";
   var count = document.getElementById("tray-count");
   count.textContent = state.tray.length + " / " + MAX_TRAY;
+
+  var sortBtn = document.getElementById("sort-value-btn");
+  if (sortBtn) {
+    sortBtn.classList.toggle("btn-primary", traySortByValue);
+    sortBtn.textContent = traySortByValue ? "Sorted by Value ✓" : "Sort by Value";
+  }
 
   if (!state.tray.length) {
     container.innerHTML = '<div class="empty-hint">Buy a lot to get coins to sort through.</div>';
@@ -133,7 +156,11 @@ function renderTray() {
   var space = gradingTraySpaceRemaining();
   var selectedCount = selectedForGradingCount();
   var canSelectMore = selectedCount < space;
-  state.tray.filter(function (entry) { return !entry.inGradeTray; }).forEach(function (entry) {
+  var visibleEntries = state.tray.filter(function (entry) { return !entry.inGradeTray; });
+  if (traySortByValue) {
+    visibleEntries = visibleEntries.slice().sort(function (a, b) { return traySortKey(b) - traySortKey(a); });
+  }
+  visibleEntries.forEach(function (entry) {
     var el = document.createElement("div");
     if (entry.identifying) {
       var pct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.remainingMs / entry.totalMs))));
@@ -185,8 +212,8 @@ function renderTray() {
   }
 }
 
-// The grade tray: a fixed number of slots (GRADING_TRAY_CAPACITY), but
-// only one coin grades at a time -- the rest wait their turn queued in
+// The grade tray: a number of slots set by the Bigger Grading Tray upgrade,
+// but only one coin grades at a time -- the rest wait their turn queued in
 // their slot. A finished coin sits put -- graded, but not returned to the
 // inspection tray -- until kept, replaced, or sold right from here.
 function renderGradingTray() {
@@ -195,9 +222,10 @@ function renderGradingTray() {
   container.innerHTML = "";
   var count = document.getElementById("grading-tray-count");
   var occupants = state.tray.filter(function (entry) { return entry.inGradeTray; });
-  count.textContent = occupants.length + " / " + GRADING_TRAY_CAPACITY;
+  var capacity = gradingTrayCapacity();
+  count.textContent = occupants.length + " / " + capacity;
 
-  for (var i = 0; i < GRADING_TRAY_CAPACITY; i++) {
+  for (var i = 0; i < capacity; i++) {
     var el = document.createElement("div");
     var entry = occupants[i];
     if (!entry) {
@@ -205,7 +233,8 @@ function renderGradingTray() {
       el.innerHTML = '<div class="coin-face">–</div><div class="coin-label">Empty slot</div>';
     } else if (entry.grading) {
       var coin = COINS_BY_ID[entry.coinId];
-      var gpct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.gradeRemainingMs / GRADE_DURATION_MS))));
+      var gradeTotalMs = entry.gradeTotalMs || BASE_GRADE_DURATION_MS;
+      var gpct = Math.max(0, Math.min(100, Math.round(100 * (1 - entry.gradeRemainingMs / gradeTotalMs))));
       var gsecs = Math.max(0, Math.ceil(entry.gradeRemainingMs / 1000));
       el.className = "coin-slot grading-slot rarity-" + coin.rarity;
       el.innerHTML =

@@ -1,8 +1,8 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 1000;
-var GRADE_DURATION_MS = 5000;
-var GRADING_TRAY_CAPACITY = 5;
+var BASE_GRADE_DURATION_MS = 5000;
+var BASE_GRADING_TRAY_CAPACITY = 5;
 
 // Standard numismatic grading scale, roughest to finest. Each tier gets a
 // rainbow color, red (Poor) through violet (Mint), for the grade labels.
@@ -35,7 +35,6 @@ var SKILL_TIERS = [
   { xp: 200, radius: 0, autoSpotCount: 4 }
 ];
 var XP_PER_MANUAL_GRADE = 1;
-var XP_PER_BOOK = 20;
 
 function gradingSkillLevel() {
   var xp = state.gradingXp || 0;
@@ -81,25 +80,12 @@ function formatMoney(pence) {
   return "£" + pounds.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function rarityWeightMultiplier(rarity) {
-  var loupeLevel = getLevel("loupe");
-  switch (rarity) {
-    case "Rare": return 1 + 0.25 * loupeLevel;
-    case "VeryRare": return 1 + 0.35 * loupeLevel;
-    case "Legendary": return 1 + 0.5 * loupeLevel;
-    default: return 1;
-  }
-}
-
 function lotCost(lot) {
-  var hagglerLevel = getLevel("haggler");
-  var mult = Math.max(0.6, 1 - hagglerLevel * 0.05);
-  return Math.round(lot.baseCost * mult);
+  return lot.baseCost;
 }
 
 function lotCoinCount(lot) {
-  var level = getLevel("bigger_lots");
-  return Math.round(lot.coinsPerLot * (1 + 0.08 * level));
+  return lot.coinsPerLot;
 }
 
 function claimedGroupCount() {
@@ -107,11 +93,12 @@ function claimedGroupCount() {
 }
 
 function sellMultiplier() {
-  var appraiserLevel = getLevel("appraiser");
   // Selling one coin at a time to a dealer only ever gets you a cut of what
-  // it's really worth -- 60% with no upgrades, rising to the full suggested
-  // value at max Appraiser's Eye.
-  var appraiserFraction = 0.6 + 0.04 * appraiserLevel; // 0.6 -> 1.0
+  // it's really worth -- 60% with no upgrades, 85% with Fair Market
+  // Appraisal, and the full retail value once Master Appraiser is bought.
+  var appraiserFraction = 0.6;
+  if (isOwned("master_appraiser")) appraiserFraction = 1.0;
+  else if (isOwned("fair_market_appraisal")) appraiserFraction = 0.85;
   var groupMult = 1 + 0.05 * claimedGroupCount();
   var fullMult = state.fullCollectionBonusClaimed ? 1.15 : 1;
   return appraiserFraction * groupMult * fullMult;
@@ -184,6 +171,16 @@ function gradeDisplayHTML(entry) {
   return gradeSpan(GRADES[range.lo]) + " – " + gradeSpan(GRADES[range.hi]);
 }
 
+function gradingTrayCapacity() {
+  return BASE_GRADING_TRAY_CAPACITY + getLevel("grade_tray_size");
+}
+
+function gradeDurationMs() {
+  var level = getLevel("grade_speed");
+  var duration = BASE_GRADE_DURATION_MS * Math.pow(0.85, level);
+  return Math.max(800, Math.round(duration));
+}
+
 // How many of the grade tray's slots are currently taken -- by a coin
 // still being graded, or one that's already graded and sitting there
 // waiting for the player to keep or sell it. Either way, the slot's held.
@@ -192,7 +189,7 @@ function gradingTrayOccupiedCount() {
 }
 
 function gradingTraySpaceRemaining() {
-  return GRADING_TRAY_CAPACITY - gradingTrayOccupiedCount();
+  return gradingTrayCapacity() - gradingTrayOccupiedCount();
 }
 
 function selectedForGradingCount() {
@@ -236,13 +233,14 @@ function sendSelectedToGrading() {
 
 // If nothing is actively being graded, starts the next queued coin (the
 // one that's been sitting in the grade tray longest). Grading then takes
-// GRADE_DURATION_MS, no further clicks required.
+// gradeDurationMs(), no further clicks required.
 function startNextGrading() {
   if (state.tray.some(function (e) { return e.grading; })) return false;
   var next = state.tray.find(function (e) { return e.inGradeTray && !e.grading && !e.graded; });
   if (!next) return false;
   next.grading = true;
-  next.gradeRemainingMs = GRADE_DURATION_MS;
+  next.gradeTotalMs = gradeDurationMs();
+  next.gradeRemainingMs = next.gradeTotalMs;
   return true;
 }
 
@@ -285,16 +283,10 @@ function processGradingTray() {
 
 function weightedPick(pool) {
   var entries = Object.keys(pool);
-  var total = 0;
-  var weights = entries.map(function (id) {
-    var coin = COINS_BY_ID[id];
-    var w = pool[id] * rarityWeightMultiplier(coin.rarity);
-    total += w;
-    return w;
-  });
+  var total = entries.reduce(function (s, id) { return s + pool[id]; }, 0);
   var r = Math.random() * total;
   for (var i = 0; i < entries.length; i++) {
-    r -= weights[i];
+    r -= pool[entries[i]];
     if (r <= 0) return entries[i];
   }
   return entries[entries.length - 1];
@@ -317,7 +309,7 @@ function buyLot(lotId) {
   // A lot's guaranteed count is always drawn from the rarity-filtered
   // sub-pool first, so pricier lots deliver a more curated, less random
   // outcome instead of just more coins. Falls back to the normal pool if
-  // scaling (bigger_lots) ever shrinks count below the guaranteed floor.
+  // that count ever shrinks below the guaranteed floor.
   var guaranteedCount = 0;
   var guaranteedPool = null;
   if (lot.guaranteed) {
@@ -491,6 +483,7 @@ function checkCollectionBonuses() {
 function buyUpgrade(id) {
   var def = UPGRADES_BY_ID[id];
   if (!def) return false;
+  if (def.requires && !isOwned(def.requires)) return false;
   if (def.type === "toggle") {
     if (isOwned(id)) return false;
     if (state.cash < def.baseCost) return false;
@@ -503,22 +496,17 @@ function buyUpgrade(id) {
     if (state.cash < cost) return false;
     state.cash -= cost;
     state.upgradeLevels[id] = level + 1;
-    if (id === "grading_books") {
-      state.gradingXp = (state.gradingXp || 0) + XP_PER_BOOK;
-    }
   }
   saveState();
   return true;
 }
 
 function identifyDurationMs() {
-  var quickLevel = getLevel("quick_sort");
-  var duration = BASE_IDENTIFY_MS * Math.pow(0.9, quickLevel);
-  return Math.max(200, Math.round(duration));
+  return BASE_IDENTIFY_MS;
 }
 
 function maxIdentifySlots() {
-  return 1 + getLevel("sorting_slots");
+  return 1;
 }
 
 // Advances in-progress identifications and fills any free slots from the
@@ -558,13 +546,6 @@ function processIdentification() {
   return didWork;
 }
 
-function passiveIncomePerSecond() {
-  var level = getLevel("display_case");
-  if (!level) return 0;
-  var collected = Object.keys(state.collection).length;
-  return collected * level * 0.08; // pence/sec
-}
-
 function tick() {
   var changed = false;
 
@@ -577,35 +558,6 @@ function tick() {
 
   if (processIdentification()) changed = true;
   if (processGradingTray()) changed = true;
-
-  if (isOwned("auto_curator")) {
-    var resolved = state.tray.filter(function (e) { return e.identified; });
-    resolved.forEach(function (e) {
-      if (state.collection[e.coinId]) {
-        sellCoin(e.uid);
-        changed = true;
-      } else if (isCoinGraded(e)) {
-        keepCoin(e.uid);
-        changed = true;
-      }
-    });
-  }
-
-  var incomePerSec = passiveIncomePerSecond();
-  if (incomePerSec > 0) {
-    state.passiveAccrued = (state.passiveAccrued || 0) + incomePerSec * (TICK_MS / 1000);
-    var whole = Math.floor(state.passiveAccrued);
-    if (whole > 0) {
-      state.cash += whole;
-      state.passiveAccrued -= whole;
-      changed = true;
-    }
-  }
-
-  if (isOwned("auto_buy")) {
-    var lot = LOTS_BY_ID[state.selectedLot];
-    if (lot && buyLot(lot.id)) changed = true;
-  }
 
   if (changed) {
     saveState();

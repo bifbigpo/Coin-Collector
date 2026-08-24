@@ -52,7 +52,6 @@ function defaultState() {
     collection: {}, // coinId -> { trueGrade, graded }
     tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, grading, gradeRemainingMs, graded, trueGrade, gradeCap }
     nextUid: startingTray.length + 1,
-    passiveAccrued: 0, // fractional pence carried between ticks
     lotCooldowns: {}, // lotId -> ms remaining
     gradingXp: 0, // experience toward the grading skill (SKILL_TIERS in engine.js)
     stats: {
