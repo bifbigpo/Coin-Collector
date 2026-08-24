@@ -19,11 +19,14 @@ function weightedPickPlain(pool) {
 // sitting in the tray waiting to be sorted.
 function buildStartingTray() {
   var pool = buildLotPool(STARTING_ESTATE);
+  var guarantee = STARTING_ESTATE.guaranteed;
+  var guaranteedPool = guarantee ? buildLotPool(STARTING_ESTATE, guarantee.minRarity) : null;
   var tray = [];
   for (var i = 0; i < 100; i++) {
+    var useGuaranteed = guarantee && i < guarantee.count && guaranteedPool && Object.keys(guaranteedPool).length;
     tray.push({
       uid: i + 1,
-      coinId: weightedPickPlain(pool),
+      coinId: weightedPickPlain(useGuaranteed ? guaranteedPool : pool),
       identified: false,
       identifying: false,
       remainingMs: 0,
@@ -43,7 +46,6 @@ function defaultState() {
   return {
     cash: 100, // pence -- enough for one more £1 charity bag on top of the free estate find
     selectedLot: "decimal_bag",
-    unlockedLots: { decimal_bag: true, check_change: true },
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
     collection: {}, // coinId -> { trueGrade, manuallyGraded }
     tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, grading, gradeRemainingMs, manuallyGraded, trueGrade, gradeCap }

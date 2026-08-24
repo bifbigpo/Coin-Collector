@@ -51,30 +51,21 @@ function renderShop() {
   var container = document.getElementById("lot-list");
   container.innerHTML = "";
   LOTS.filter(function (lot) { return !lot.isFree; }).forEach(function (lot) {
-    var unlocked = !!state.unlockedLots[lot.id];
     var card = document.createElement("div");
-    card.className = "card lot-card" + (state.selectedLot === lot.id ? " selected" : "") + (unlocked ? "" : " locked");
+    card.className = "card lot-card" + (state.selectedLot === lot.id ? " selected" : "");
 
-    if (!unlocked) {
-      card.innerHTML =
-        '<div class="card-title">' + lot.name + " 🔒</div>" +
-        '<div class="card-blurb">' + lot.blurb + "</div>" +
-        '<button class="btn" data-action="unlock-lot" data-id="' + lot.id + '"' +
-        (state.cash < lot.unlockCost ? " disabled" : "") + ">Unlock for " + formatMoney(lot.unlockCost) + "</button>";
-    } else {
-      var cost = lotCost(lot);
-      var count = lotCoinCount(lot);
-      card.innerHTML =
-        '<div class="card-title">' + lot.name + "</div>" +
-        '<div class="card-blurb">' + lot.blurb + "</div>" +
-        '<div class="card-meta">' + count + " coins</div>" +
-        '<div class="card-actions">' +
-        '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
-        (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>" +
-        '<button class="btn btn-primary" data-action="buy-lot" data-id="' + lot.id + '"' +
-        (state.cash < cost ? " disabled" : "") + ">Buy for " + formatMoney(cost) + "</button>" +
-        "</div>";
-    }
+    var cost = lotCost(lot);
+    var count = lotCoinCount(lot);
+    card.innerHTML =
+      '<div class="card-title">' + lot.name + "</div>" +
+      '<div class="card-blurb">' + lot.blurb + "</div>" +
+      '<div class="card-meta">' + count + " coins</div>" +
+      '<div class="card-actions">' +
+      '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
+      (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>" +
+      '<button class="btn btn-primary" data-action="buy-lot" data-id="' + lot.id + '"' +
+      (state.cash < cost ? " disabled" : "") + ">Buy for " + formatMoney(cost) + "</button>" +
+      "</div>";
     container.appendChild(card);
   });
 }

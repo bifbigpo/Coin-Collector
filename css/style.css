@@ -108,10 +108,6 @@ h2 {
   border-color: var(--accent);
 }
 
-.card.locked {
-  opacity: 0.75;
-}
-
 .card-title {
   font-weight: 600;
   display: flex;
