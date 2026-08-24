@@ -1,7 +1,7 @@
 var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 1000;
-var GRADE_DURATION_MS = 3000;
+var GRADE_DURATION_MS = 5000;
 var GRADING_TRAY_CAPACITY = 5;
 
 // Standard numismatic grading scale, roughest to finest. Each tier gets a
@@ -214,9 +214,9 @@ function toggleSelectForGrading(uid) {
   saveState();
 }
 
-// Moves every selected coin into the grade tray at once -- this is the
-// only way coins start grading. Grading then runs on its own, no further
-// clicks required, taking GRADE_DURATION_MS per coin.
+// Moves every selected coin into the grade tray at once, filling its
+// slots -- but the tray only grades one coin at a time. The rest sit
+// queued in their slot until it's their turn.
 function sendSelectedToGrading() {
   var space = gradingTraySpaceRemaining();
   var moved = false;
@@ -224,47 +224,62 @@ function sendSelectedToGrading() {
     if (!e.selected) return;
     if (space > 0) {
       e.inGradeTray = true;
-      e.grading = true;
-      e.gradeRemainingMs = GRADE_DURATION_MS;
       space--;
       moved = true;
     }
     e.selected = false;
   });
+  if (moved) startNextGrading();
   if (moved) saveState();
   return moved;
 }
 
-// Pulls a coin still being graded back out of the grade tray before it
-// finishes, freeing the slot -- it returns to the inspection tray to be
-// selected again later. Coins that have already finished grading aren't
-// cancelled this way; they're resolved with Keep/Replace/Sell instead.
+// If nothing is actively being graded, starts the next queued coin (the
+// one that's been sitting in the grade tray longest). Grading then takes
+// GRADE_DURATION_MS, no further clicks required.
+function startNextGrading() {
+  if (state.tray.some(function (e) { return e.grading; })) return false;
+  var next = state.tray.find(function (e) { return e.inGradeTray && !e.grading && !e.graded; });
+  if (!next) return false;
+  next.grading = true;
+  next.gradeRemainingMs = GRADE_DURATION_MS;
+  return true;
+}
+
+// Pulls a coin out of the grade tray before it's graded -- whether it's
+// the one actively counting down or still queued behind it -- freeing its
+// slot and returning it to the inspection tray to be selected again
+// later. Coins that have already finished grading aren't cancelled this
+// way; they're resolved with Keep/Replace/Sell instead.
 function cancelGrading(uid) {
   var entry = findTrayEntry(uid);
-  if (!entry || !entry.grading) return;
+  if (!entry || !entry.inGradeTray || entry.graded) return;
+  var wasActive = entry.grading;
   entry.grading = false;
   entry.inGradeTray = false;
   entry.gradeRemainingMs = 0;
+  if (wasActive) startNextGrading();
   saveState();
 }
 
-// Advances every coin currently being graded. Finished coins stay put in
-// the grade tray -- graded, but still occupying their slot -- until the
+// Advances whichever coin is actively being graded, then starts the next
+// queued one the moment a slot frees up. Finished coins stay put in the
+// grade tray -- graded, but still occupying their slot -- until the
 // player keeps, replaces, or sells them.
 function processGradingTray() {
   var didWork = false;
-  state.tray.forEach(function (e) {
-    if (e.grading) {
-      e.gradeRemainingMs -= TICK_MS;
-      didWork = true;
-      if (e.gradeRemainingMs <= 0) {
-        e.grading = false;
-        e.graded = true;
-        state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
-        state.stats.coinsGraded++;
-      }
+  var active = state.tray.filter(function (e) { return e.grading; })[0];
+  if (active) {
+    active.gradeRemainingMs -= TICK_MS;
+    didWork = true;
+    if (active.gradeRemainingMs <= 0) {
+      active.grading = false;
+      active.graded = true;
+      state.gradingXp = (state.gradingXp || 0) + XP_PER_MANUAL_GRADE;
+      state.stats.coinsGraded++;
     }
-  });
+  }
+  if (startNextGrading()) didWork = true;
   return didWork;
 }
 

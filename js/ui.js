@@ -185,10 +185,10 @@ function renderTray() {
   }
 }
 
-// The grade tray: a fixed number of slots (GRADING_TRAY_CAPACITY). Coins
-// sent here grade automatically, 3 seconds each, then sit put -- graded,
-// but not returned to the inspection tray -- until kept, replaced, or sold
-// right from their slot here.
+// The grade tray: a fixed number of slots (GRADING_TRAY_CAPACITY), but
+// only one coin grades at a time -- the rest wait their turn queued in
+// their slot. A finished coin sits put -- graded, but not returned to the
+// inspection tray -- until kept, replaced, or sold right from here.
 function renderGradingTray() {
   var container = document.getElementById("grading-tray-list");
   if (!container) return;
@@ -213,6 +213,14 @@ function renderGradingTray() {
         '<div class="coin-name">' + coin.name + '</div>' +
         '<div class="coin-grade coin-grade-unknown">Grading… ' + gsecs + 's</div>' +
         '<div class="progress-track"><div class="progress-fill" style="width:' + gpct + '%"></div></div>' +
+        '<button class="btn btn-small btn-outline" data-action="cancel-grading" data-uid="' + entry.uid + '">Cancel</button>';
+    } else if (!entry.graded) {
+      var qcoin = COINS_BY_ID[entry.coinId];
+      el.className = "coin-slot grading-slot queued rarity-" + qcoin.rarity;
+      el.innerHTML =
+        '<div class="coin-face">' + pixelCoinImgHTML(qcoin, null, "pixel-coin-lg") + '</div>' +
+        '<div class="coin-name">' + qcoin.name + '</div>' +
+        '<div class="coin-grade coin-grade-unknown">Waiting to grade…</div>' +
         '<button class="btn btn-small btn-outline" data-action="cancel-grading" data-uid="' + entry.uid + '">Cancel</button>';
     } else {
       // Finished grading -- resolved right here, same actions as the
