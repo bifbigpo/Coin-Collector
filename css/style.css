@@ -188,7 +188,34 @@ h2 {
 
 .tray-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+/* A second row below the header for tray-organization actions (sort, keep,
+   sell) -- kept separate from the acquire actions above so neither group
+   crowds the other, and each wraps independently on narrow screens. */
+.tray-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+
+.tray-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.tray-toolbar-label {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 2px;
 }
 
 .tray-grid {

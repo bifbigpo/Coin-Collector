@@ -342,6 +342,100 @@ function buyLot(lotId) {
   return true;
 }
 
+// Identified coins sort highest suggested value first; not-yet-identified
+// coins have no visible value, so they sink to the bottom.
+function trayValueSortKey(entry) {
+  return entry.identified ? coinSuggestedValue(entry) : -1;
+}
+
+// Ranked by grade -- graded coins by their true grade, ungraded-but-
+// identified coins by the bottom of their estimate (same cautious default
+// used for pricing), unidentified coins sink to the bottom.
+function trayGradeSortKey(entry) {
+  if (!entry.identified) return -1;
+  if (isCoinGraded(entry)) return GRADE_INDEX[entry.trueGrade];
+  return estimateRange(entry).lo;
+}
+
+// Tiebreaker for trayGradeSortKey: the top of the estimate. At low grading
+// skill the estimate radius is wide enough that most coins' bottom bound
+// clamps to the same floor (Poor), so sorting on the floor alone barely
+// moves anything -- breaking ties on the ceiling still favors coins that
+// could plausibly grade higher.
+function trayGradeSortKeyHi(entry) {
+  if (!entry.identified) return -1;
+  if (isCoinGraded(entry)) return GRADE_INDEX[entry.trueGrade];
+  return estimateRange(entry).hi;
+}
+
+// Coins still needed for the collection sort above duplicates; unidentified
+// coins sink to the bottom same as the other modes.
+function trayNeededSortKey(entry) {
+  if (!entry.identified) return -1;
+  return state.collection[entry.coinId] ? 0 : 1;
+}
+
+// The tray's sort modes: each is one or more key functions, most important
+// first -- entries are ranked by the first, ties broken by the next, and so
+// on. Selecting a mode from the toolbar re-sorts once and remembers the
+// choice (see sortTrayByMode) so its button stays highlighted.
+var TRAY_SORT_MODES = {
+  value:  { label: "Value",  keyFns: [trayValueSortKey] },
+  grade:  { label: "Grade",  keyFns: [trayGradeSortKey, trayGradeSortKeyHi] },
+  needed: { label: "Needed", keyFns: [trayNeededSortKey, trayValueSortKey] }
+};
+
+// Builds a descending comparator from key functions applied in order --
+// ties on one are broken by the next.
+function byKeysDesc(keyFns) {
+  return function (a, b) {
+    for (var i = 0; i < keyFns.length; i++) {
+      var diff = keyFns[i](b) - keyFns[i](a);
+      if (diff !== 0) return diff;
+    }
+    return 0;
+  };
+}
+
+// Reorders only the coins still sitting in the inspection tray (never the
+// ones already committed to the grade tray -- reordering those would change
+// which one grades next), highest key first. A one-off snapshot sort, not a
+// live-maintained order: it doesn't move again until sorted once more.
+function sortTray(compareFn) {
+  var indices = [];
+  var movable = [];
+  state.tray.forEach(function (e, i) {
+    if (!e.inGradeTray) {
+      indices.push(i);
+      movable.push(e);
+    }
+  });
+  movable.sort(compareFn);
+  indices.forEach(function (idx, i) { state.tray[idx] = movable[i]; });
+}
+
+function sortTrayByMode(mode) {
+  var def = TRAY_SORT_MODES[mode];
+  if (!def) return;
+  sortTray(byKeysDesc(def.keyFns));
+  state.traySortMode = mode;
+  saveState();
+}
+
+// The appraised value of everything currently banked for one penny type --
+// what the album is "worth", not what a dealer would pay for it.
+function collectionValueForGroup(groupId) {
+  return COINS.filter(function (c) { return c.group === groupId && state.collection[c.id]; })
+    .reduce(function (sum, c) {
+      var owned = state.collection[c.id];
+      return sum + coinSuggestedValue({ coinId: c.id, trueGrade: owned.trueGrade, graded: owned.graded });
+    }, 0);
+}
+
+function totalCollectionValue() {
+  return COIN_GROUPS.reduce(function (sum, g) { return sum + collectionValueForGroup(g.id); }, 0);
+}
+
 function findTrayEntry(uid) {
   for (var i = 0; i < state.tray.length; i++) {
     if (state.tray[i].uid === uid) return state.tray[i];
@@ -401,18 +495,27 @@ function sellCoin(uid) {
   saveState();
 }
 
+// Only sells duplicates that are actually graded -- an ungraded coin is
+// still priced at the cautious bottom of its estimate, so selling it sight
+// unseen risks giving away a coin that would've graded (and sold) higher.
 function sellAllDuplicates() {
   var toSell = state.tray.filter(function (e) {
-    return e.identified && state.collection[e.coinId];
+    return e.identified && isCoinGraded(e) && state.collection[e.coinId];
   });
   toSell.forEach(function (e) { sellCoin(e.uid); });
 }
 
+// Keeps every graded coin still needed for the collection, and also
+// replaces any owned coin with a graded tray coin that beats it -- so one
+// click both fills gaps and upgrades the album.
 function keepAllNeeded() {
-  var toKeep = state.tray.filter(function (e) {
-    return e.identified && isCoinGraded(e) && !state.collection[e.coinId];
+  var toProcess = state.tray.filter(function (e) {
+    return e.identified && isCoinGraded(e) && (!state.collection[e.coinId] || coinIsUpgrade(e));
   });
-  toKeep.forEach(function (e) { keepCoin(e.uid); });
+  toProcess.forEach(function (e) {
+    if (state.collection[e.coinId]) replaceCoin(e.uid);
+    else keepCoin(e.uid);
+  });
 }
 
 // One-off cash bonuses for raising the *floor* of each individual penny-type

@@ -48,6 +48,7 @@ function defaultState() {
   return {
     cash: 100, // pence -- enough for one more £1 charity bag on top of the free estate find
     selectedLot: "decimal_bag",
+    traySortMode: "value", // which tray sort button is highlighted / was last applied
     upgradeLevels: {}, // id -> level (leveled) or true (toggle)
     collection: {}, // coinId -> { trueGrade, graded }
     tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, grading, gradeRemainingMs, graded, trueGrade, gradeCap }

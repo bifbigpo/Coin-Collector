@@ -38,9 +38,18 @@
         <div class="tray-actions">
           <button id="check-change-btn" class="btn btn-small btn-primary" data-action="buy-lot" data-id="check_change">Check Your Change (Free)</button>
           <button id="send-to-grading-btn" class="btn btn-small btn-primary" data-action="send-selected-to-grading" disabled>Send to Grade Tray (0)</button>
-          <button id="sort-value-btn" class="btn btn-small" data-action="toggle-sort-value">Sort by Value</button>
-          <button class="btn btn-small" data-action="keep-needed">Keep Needed</button>
-          <button class="btn btn-small btn-outline" data-action="sell-duplicates">Sell Duplicates</button>
+        </div>
+      </div>
+      <div class="tray-toolbar">
+        <div class="tray-toolbar-group">
+          <span class="tray-toolbar-label">Sort</span>
+          <button class="btn btn-small" data-action="sort-tray" data-id="value">Value</button>
+          <button class="btn btn-small" data-action="sort-tray" data-id="grade">Grade</button>
+          <button class="btn btn-small" data-action="sort-tray" data-id="needed">Needed</button>
+        </div>
+        <div class="tray-toolbar-group">
+          <button class="btn btn-small" data-action="keep-needed">Keep &amp; Replace Needed</button>
+          <button class="btn btn-small btn-outline" data-action="sell-duplicates">Sell Graded Duplicates</button>
         </div>
       </div>
       <div id="tray-list" class="tray-grid"></div>
