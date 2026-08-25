@@ -570,7 +570,7 @@ function checkCollectionBonuses() {
     var complete = coinsInGroup.every(function (c) { return state.collection[c.id]; });
     if (complete) {
       state.groupBonusesClaimed[group.id] = true;
-      var reward = coinsInGroup.reduce(function (sum, c) { return sum + c.value; }, 0) * 2;
+      var reward = group.firstCompleteBonus;
       state.cash += reward;
       queueToast(group.label + " collection complete! +" + formatMoney(reward) + " and a permanent +5% sale bonus.");
     }
