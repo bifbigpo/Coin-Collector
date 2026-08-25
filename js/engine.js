@@ -313,7 +313,7 @@ function buyLot(lotId) {
   var guaranteedCount = 0;
   var guaranteedPool = null;
   if (lot.guaranteed) {
-    guaranteedPool = buildLotPool(lot, lot.guaranteed.minRarity);
+    guaranteedPool = buildLotPool(lot, lot.guaranteed.minRarity, lot.guaranteed.groups);
     guaranteedCount = Math.min(lot.guaranteed.count, count);
   }
   state.cash -= cost;

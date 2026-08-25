@@ -20,7 +20,7 @@ function weightedPickPlain(pool) {
 function buildStartingTray() {
   var pool = buildLotPool(STARTING_ESTATE);
   var guarantee = STARTING_ESTATE.guaranteed;
-  var guaranteedPool = guarantee ? buildLotPool(STARTING_ESTATE, guarantee.minRarity) : null;
+  var guaranteedPool = guarantee ? buildLotPool(STARTING_ESTATE, guarantee.minRarity, guarantee.groups) : null;
   var tray = [];
   for (var i = 0; i < 100; i++) {
     var useGuaranteed = guarantee && i < guarantee.count && guaranteedPool && Object.keys(guaranteedPool).length;

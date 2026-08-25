@@ -22,10 +22,14 @@ var RARITY_ORDER = ["Common", "Uncommon", "Rare", "VeryRare", "Legendary"];
 // the *guaranteed* sub-pool for lot.guaranteed -- e.g. "Rare" restricts to
 // coins of Rare quality or better, still weighted by RARITY_POOL_MULTIPLIER
 // among themselves so a guaranteed pick still favors Rare over Legendary.
-function buildLotPool(lot, minRarity) {
+// Pass groupIds to further restrict a guaranteed pick to specific penny
+// types regardless of rarity -- e.g. STARTING_ESTATE.guaranteed, which
+// steers toward a type rather than a rarity tier.
+function buildLotPool(lot, minRarity, groupIds) {
   var minIdx = minRarity ? RARITY_ORDER.indexOf(minRarity) : -1;
   var pool = {};
   Object.keys(lot.typeWeights).forEach(function (typeId) {
+    if (groupIds && groupIds.indexOf(typeId) === -1) return;
     var spec = lot.typeWeights[typeId];
     var weight = typeof spec === "number" ? spec : spec.weight;
     var yearMin = typeof spec === "object" ? spec.yearMin : undefined;
@@ -51,12 +55,16 @@ var BEGINNER_GRADES = ["poor", "fair", "good", "vgood"];
 // Not a purchasable lot -- this seeds the very first tray for free, as if
 // the player is going through a deceased family member's house. Weighted
 // toward the decades a long life would have spanned, with a handful of
-// older pieces turning up in a drawer somewhere. Guarantees one Rare+ find
-// so the player has something worth chasing right from the start.
+// older pieces turning up in a drawer somewhere. Guarantees one coin from
+// one of the three easiest full runs to complete -- Bronze, New Penny, or
+// Pre-Decimal, all short, cheap-to-fill sets with no punishing key dates --
+// so every player starts with a real shot at their first completion bonus,
+// rather than the guarantee occasionally burning itself on an unreachable
+// George V/VI jackpot coin.
 var STARTING_ESTATE = {
   id: "family_estate",
   gradeCap: BEGINNER_GRADES,
-  guaranteed: { count: 1, minRarity: "Rare" },
+  guaranteed: { count: 1, groups: ["eii_decimal_bronze", "eii_decimal_new", "eii_predecimal"] },
   typeWeights: {
     victoria_bun: 2, victoria_veiled: 3, edward_vii: 4,
     george_v: 8, george_vi: 14, eii_predecimal: 18,
