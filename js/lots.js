@@ -81,6 +81,18 @@ var STARTING_ESTATE = {
 // curated, less random outcome rather than just more coins.
 var LOTS = [
   {
+    id: "check_change",
+    name: "Check Your Change",
+    blurb: "Rifle through your own pocket change for modern coins. Free, five coins at a time.",
+    isFree: true,
+    baseCost: 0,
+    coinsPerLot: 5,
+    cooldownMs: 3000,
+    typeWeights: {
+      eii_decimal_steel: 70, charles_iii: 30
+    }
+  },
+  {
     id: "decimal_bag",
     name: "Decimal Charity Bag",
     blurb: "A tin of early decimal pennies from the local charity shop -- nothing newer than 1990.",
@@ -90,18 +102,6 @@ var LOTS = [
     typeWeights: {
       eii_decimal_new: 60,
       eii_decimal_bronze: { weight: 40, yearMax: 1990 }
-    }
-  },
-  {
-    id: "check_change",
-    name: "Check Your Change",
-    blurb: "Rifle through your own pocket change for modern coins. Free, but only one at a time.",
-    isFree: true,
-    baseCost: 0,
-    coinsPerLot: 1,
-    cooldownMs: 3000,
-    typeWeights: {
-      eii_decimal_steel: 70, charles_iii: 30
     }
   },
   {

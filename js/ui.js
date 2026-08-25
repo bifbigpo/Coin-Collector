@@ -23,7 +23,6 @@ function flushToasts() {
 function renderAll() {
   renderHeader();
   renderShop();
-  renderCheckChange();
   renderUpgrades();
   renderTray();
   renderGradingTray();
@@ -50,39 +49,36 @@ function renderHeader() {
 function renderShop() {
   var container = document.getElementById("lot-list");
   container.innerHTML = "";
-  LOTS.filter(function (lot) { return !lot.isFree; }).forEach(function (lot) {
+  LOTS.forEach(function (lot) {
     var card = document.createElement("div");
     card.className = "card lot-card" + (state.selectedLot === lot.id ? " selected" : "");
 
     var cost = lotCost(lot);
     var count = lotCoinCount(lot);
+    var full = state.tray.length + count > MAX_TRAY;
+    var cooldownRemaining = lot.cooldownMs ? lotCooldownRemaining(lot.id) : 0;
+    var buyLabel = cooldownRemaining > 0
+      ? "Available in " + Math.ceil(cooldownRemaining / 1000) + "s"
+      : "Buy for " + (lot.isFree ? "Free" : formatMoney(cost));
+    var buyDisabled = cooldownRemaining > 0 || full || state.cash < cost;
+
+    // The free "Check Your Change" refill has nothing to compare against
+    // other lots on, so it skips the select toggle other lots use.
+    var selectButton = lot.isFree ? "" :
+      '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
+      (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>";
+
     card.innerHTML =
       '<div class="card-title">' + lot.name + "</div>" +
       '<div class="card-blurb">' + lot.blurb + "</div>" +
       '<div class="card-meta">' + count + " coins</div>" +
       '<div class="card-actions">' +
-      '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
-      (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>" +
+      selectButton +
       '<button class="btn btn-primary" data-action="buy-lot" data-id="' + lot.id + '"' +
-      (state.cash < cost ? " disabled" : "") + ">Buy for " + formatMoney(cost) + "</button>" +
+      (buyDisabled ? " disabled" : "") + ">" + buyLabel + "</button>" +
       "</div>";
     container.appendChild(card);
   });
-}
-
-function renderCheckChange() {
-  var btn = document.getElementById("check-change-btn");
-  if (!btn) return;
-  var lot = LOTS_BY_ID["check_change"];
-  var remaining = lotCooldownRemaining("check_change");
-  if (remaining > 0) {
-    btn.textContent = "Check Your Change (" + Math.ceil(remaining / 1000) + "s)";
-    btn.disabled = true;
-  } else {
-    var full = state.tray.length + lotCoinCount(lot) > MAX_TRAY;
-    btn.textContent = "Check Your Change (Free)";
-    btn.disabled = full;
-  }
 }
 
 function renderUpgrades() {
