@@ -109,7 +109,7 @@ var LOTS = [
     name: "Purchase pre-decimal bag from charity shop",
     blurb: "The same charity shop's other tin -- pre-decimal pennies that reach back well before 1971.",
     baseCost: 500,
-    coinsPerLot: 10,
+    coinsPerLot: 20,
     typeWeights: {
       eii_predecimal: 55, george_vi: 30, george_v: 10, edward_vii: 3, victoria_veiled: 2
     }
