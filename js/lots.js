@@ -97,11 +97,21 @@ var LOTS = [
     name: "Decimal Charity Bag",
     blurb: "A tin of early decimal pennies from the local charity shop -- nothing newer than 1990.",
     baseCost: 100,
-    coinsPerLot: 50,
+    coinsPerLot: 60,
     gradeCap: BEGINNER_GRADES,
     typeWeights: {
       eii_decimal_new: 60,
       eii_decimal_bronze: { weight: 40, yearMax: 1990 }
+    }
+  },
+  {
+    id: "predecimal_bag",
+    name: "Purchase pre-decimal bag from charity shop",
+    blurb: "The same charity shop's other tin -- pre-decimal pennies that reach back well before 1971.",
+    baseCost: 500,
+    coinsPerLot: 30,
+    typeWeights: {
+      eii_predecimal: 55, george_vi: 30, george_v: 10, edward_vii: 3, victoria_veiled: 2
     }
   },
   {
@@ -119,7 +129,7 @@ var LOTS = [
     id: "car_boot",
     name: "Car Boot Sale Box",
     blurb: "A shoebox of odds and ends bought off a folding table for a fiver -- worth a proper look through.",
-    baseCost: 2500,
+    baseCost: 2000,
     coinsPerLot: 20,
     guaranteed: { count: 1, minRarity: "Uncommon" },
     typeWeights: {

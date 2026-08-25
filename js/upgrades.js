@@ -9,8 +9,8 @@ var UPGRADES = [
     blurb: "A larger tray with more room to work. Grade one more coin at a time per level.",
     type: "leveled",
     maxLevel: 5,
-    baseCost: 6000,
-    costMult: 1.8
+    baseCost: 100,
+    costMult: 2
   },
   {
     id: "grade_speed",
