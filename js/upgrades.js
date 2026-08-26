@@ -26,14 +26,14 @@ var UPGRADES = [
     name: "Fair Market Appraisal",
     blurb: "Stop leaving money on the table. Sell coins for 85% of their true value instead of a dealer's usual 60% cut.",
     type: "toggle",
-    baseCost: 20000
+    baseCost: 2500
   },
   {
     id: "master_appraiser",
     name: "Master Appraiser",
     blurb: "Your reputation alone gets top dollar. Sell every coin for 100% of its full retail value.",
     type: "toggle",
-    baseCost: 75000,
+    baseCost: 5000,
     requires: "fair_market_appraisal"
   }
 ];
