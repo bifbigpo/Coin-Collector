@@ -163,6 +163,29 @@ var LOTS = [
     }
   },
   {
+    // Grade-capped (see gradeCapTiers below), so its realized expected
+    // value is well under its ~£66.11 raw face value -- an exact
+    // calculation (cross-checked against a 200k-trial simulation) puts it
+    // at ~£25.44. £20 prices it just under that, in line with the rest of
+    // the shop always leaving some margin in the player's favor.
+    id: "victorian_bag",
+    name: "Victorian Penny Bag",
+    blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901. Well-circulated stock -- don't expect better than Very Fine.",
+    baseCost: 2000,
+    coinsPerLot: 20,
+    // 4 coins no better than Good, 14 no better than Fine, 2 no better
+    // than Very Fine -- so nothing in the bag ever rolls Uncirculated or
+    // Mint. Counts must sum to coinsPerLot (20).
+    gradeCapTiers: [
+      { count: 4, gradeCap: GRADES_POOR_TO_GOOD },
+      { count: 14, gradeCap: GRADES_POOR_TO_FINE },
+      { count: 2, gradeCap: GRADES_POOR_TO_VFINE }
+    ],
+    typeWeights: {
+      victoria_bun: 70, victoria_veiled: 30
+    }
+  },
+  {
     id: "antique_lot",
     name: "Antique Dealer's Lot",
     blurb: "A dealer's tray of pre-decimal coppers, curated enough that at least one is worth having.",
@@ -185,32 +208,6 @@ var LOTS = [
       eii_predecimal: 5, eii_decimal_steel: 2, eii_decimal_bronze: 2, eii_decimal_new: 2, charles_iii: 1.5
     }
   },
-  {
-    // Real price is ~85% of this bag's own expected raw value, same
-    // principle as the rest of the shop (see the pricing note above) --
-    // 20 coins at an ~£3.31 expected value each is ~£66.11 raw, which
-    // prices out to ~£55. Temporarily dropped to £10 for testing; put
-    // baseCost back to 5500 once that's done. No guaranteed pick yet; the
-    // oldest, priciest common-value coins in the game (commonValue
-    // 250/200p) already give it the highest expected value of any lot
-    // without needing one.
-    id: "victorian_bag",
-    name: "Victorian Penny Bag",
-    blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901. Well-circulated stock -- don't expect better than Very Fine.",
-    baseCost: 1000,
-    coinsPerLot: 20,
-    // 4 coins no better than Good, 14 no better than Fine, 2 no better
-    // than Very Fine -- so nothing in the bag ever rolls Uncirculated or
-    // Mint. Counts must sum to coinsPerLot (20).
-    gradeCapTiers: [
-      { count: 4, gradeCap: GRADES_POOR_TO_GOOD },
-      { count: 14, gradeCap: GRADES_POOR_TO_FINE },
-      { count: 2, gradeCap: GRADES_POOR_TO_VFINE }
-    ],
-    typeWeights: {
-      victoria_bun: 70, victoria_veiled: 30
-    }
-  }
 ];
 
 var LOTS_BY_ID = {};
