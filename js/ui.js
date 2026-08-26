@@ -327,7 +327,16 @@ function renderCollection() {
       var owned = !!state.collection[coin.id];
       var slot = document.createElement("div");
       slot.className = "collection-slot" + (owned ? " owned rarity-" + coin.rarity : " unknown");
-      slot.title = owned ? coin.name + " - " + coin.subtitle : "Not yet found";
+      // Hovering an owned coin surfaces what it's worth; hovering a gap in
+      // the album surfaces what belongs there and how rare it is to find,
+      // since the slot itself only ever shows a "?".
+      if (owned) {
+        var ownedEntry = state.collection[coin.id];
+        slot.title = coin.name + " — " + coin.subtitle + " · " + GRADES_BY_ID[ownedEntry.trueGrade].label +
+          " · Value " + formatMoney(coinSuggestedValue({ coinId: coin.id, trueGrade: ownedEntry.trueGrade, graded: ownedEntry.graded }));
+      } else {
+        slot.title = coin.name + " — " + coin.subtitle + " · " + RARITY[coin.rarity].label + " · Not yet found";
+      }
       slot.innerHTML = owned
         ? '<div class="coin-face">' + pixelCoinImgHTML(coin, state.collection[coin.id].trueGrade, "pixel-coin-sm") + '</div>' +
           '<div class="coin-label">' + coin.subtitle + '</div>' +
