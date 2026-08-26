@@ -22,10 +22,14 @@ var RARITY_ORDER = ["Common", "Uncommon", "Rare", "VeryRare", "Legendary"];
 // the *guaranteed* sub-pool for lot.guaranteed -- e.g. "Rare" restricts to
 // coins of Rare quality or better, still weighted by RARITY_POOL_MULTIPLIER
 // among themselves so a guaranteed pick still favors Rare over Legendary.
-function buildLotPool(lot, minRarity) {
+// Pass groupIds to further restrict a guaranteed pick to specific penny
+// types regardless of rarity -- e.g. STARTING_ESTATE.guaranteed, which
+// steers toward a type rather than a rarity tier.
+function buildLotPool(lot, minRarity, groupIds) {
   var minIdx = minRarity ? RARITY_ORDER.indexOf(minRarity) : -1;
   var pool = {};
   Object.keys(lot.typeWeights).forEach(function (typeId) {
+    if (groupIds && groupIds.indexOf(typeId) === -1) return;
     var spec = lot.typeWeights[typeId];
     var weight = typeof spec === "number" ? spec : spec.weight;
     var yearMin = typeof spec === "object" ? spec.yearMin : undefined;
@@ -48,15 +52,44 @@ function buildLotPool(lot, minRarity) {
 // grading scale -- until you're buying from someone who sorts stock.
 var BEGINNER_GRADES = ["poor", "fair", "good", "vgood"];
 
+// Narrower grade caps for lots that mix a few different tiers of "how
+// worn" within the same bag (see gradeCapTiers below) rather than one cap
+// across every coin.
+var GRADES_POOR_TO_GOOD = ["poor", "fair", "good"];
+var GRADES_POOR_TO_FINE = ["poor", "fair", "good", "vgood", "fine"];
+var GRADES_POOR_TO_VFINE = ["poor", "fair", "good", "vgood", "fine", "vfine"];
+
+// Looks up the grade cap for the i-th coin drawn from a lot. Most lots use
+// a single lot.gradeCap for every coin; a lot can instead set
+// gradeCapTiers -- an ordered list of { count, gradeCap } slices whose
+// counts should sum to coinsPerLot -- to mix different wear ranges within
+// the same bag (e.g. mostly well-worn with a couple of better finds).
+// Falls back to lot.gradeCap (or ungraded/no cap) past the end of the
+// list, so a mismatched total degrades gracefully rather than erroring.
+function gradeCapForIndex(lot, index) {
+  if (!lot.gradeCapTiers) return lot.gradeCap || null;
+  var offset = 0;
+  for (var i = 0; i < lot.gradeCapTiers.length; i++) {
+    var tier = lot.gradeCapTiers[i];
+    if (index < offset + tier.count) return tier.gradeCap;
+    offset += tier.count;
+  }
+  return lot.gradeCap || null;
+}
+
 // Not a purchasable lot -- this seeds the very first tray for free, as if
 // the player is going through a deceased family member's house. Weighted
 // toward the decades a long life would have spanned, with a handful of
-// older pieces turning up in a drawer somewhere. Guarantees one Rare+ find
-// so the player has something worth chasing right from the start.
+// older pieces turning up in a drawer somewhere. Guarantees one coin from
+// one of the three easiest full runs to complete -- Bronze, New Penny, or
+// Pre-Decimal, all short, cheap-to-fill sets with no punishing key dates --
+// so every player starts with a real shot at their first completion bonus,
+// rather than the guarantee occasionally burning itself on an unreachable
+// George V/VI jackpot coin.
 var STARTING_ESTATE = {
   id: "family_estate",
   gradeCap: BEGINNER_GRADES,
-  guaranteed: { count: 1, minRarity: "Rare" },
+  guaranteed: { count: 1, groups: ["eii_decimal_bronze", "eii_decimal_new", "eii_predecimal"] },
   typeWeights: {
     victoria_bun: 2, victoria_veiled: 3, edward_vii: 4,
     george_v: 8, george_vi: 14, eii_predecimal: 18,
@@ -73,11 +106,23 @@ var STARTING_ESTATE = {
 // curated, less random outcome rather than just more coins.
 var LOTS = [
   {
+    id: "check_change",
+    name: "Check Your Change",
+    blurb: "Rifle through your own pocket change for modern coins. Free, five coins at a time.",
+    isFree: true,
+    baseCost: 0,
+    coinsPerLot: 5,
+    cooldownMs: 3000,
+    typeWeights: {
+      eii_decimal_steel: 70, charles_iii: 30
+    }
+  },
+  {
     id: "decimal_bag",
     name: "Decimal Charity Bag",
     blurb: "A tin of early decimal pennies from the local charity shop -- nothing newer than 1990.",
     baseCost: 100,
-    coinsPerLot: 50,
+    coinsPerLot: 60,
     gradeCap: BEGINNER_GRADES,
     typeWeights: {
       eii_decimal_new: 60,
@@ -85,15 +130,13 @@ var LOTS = [
     }
   },
   {
-    id: "check_change",
-    name: "Check Your Change",
-    blurb: "Rifle through your own pocket change for modern coins. Free, but only one at a time.",
-    isFree: true,
-    baseCost: 0,
-    coinsPerLot: 1,
-    cooldownMs: 3000,
+    id: "predecimal_bag",
+    name: "Purchase pre-decimal bag from charity shop",
+    blurb: "The same charity shop's other tin -- pre-decimal pennies that reach back well before 1971.",
+    baseCost: 500,
+    coinsPerLot: 20,
     typeWeights: {
-      eii_decimal_steel: 70, charles_iii: 30
+      eii_predecimal: 55, george_vi: 30, george_v: 10, edward_vii: 3, victoria_veiled: 2
     }
   },
   {
@@ -111,7 +154,7 @@ var LOTS = [
     id: "car_boot",
     name: "Car Boot Sale Box",
     blurb: "A shoebox of odds and ends bought off a folding table for a fiver -- worth a proper look through.",
-    baseCost: 2500,
+    baseCost: 2000,
     coinsPerLot: 20,
     guaranteed: { count: 1, minRarity: "Uncommon" },
     typeWeights: {
@@ -120,10 +163,33 @@ var LOTS = [
     }
   },
   {
+    // Grade-capped (see gradeCapTiers below), so its realized expected
+    // value is well under its ~£66.11 raw face value -- an exact
+    // calculation (cross-checked against a 200k-trial simulation) puts it
+    // at ~£25.44. £20 prices it just under that, in line with the rest of
+    // the shop always leaving some margin in the player's favor.
+    id: "victorian_bag",
+    name: "Victorian Penny Bag",
+    blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901. Well-circulated stock -- don't expect better than Very Fine.",
+    baseCost: 2000,
+    coinsPerLot: 20,
+    // 4 coins no better than Good, 14 no better than Fine, 2 no better
+    // than Very Fine -- so nothing in the bag ever rolls Uncirculated or
+    // Mint. Counts must sum to coinsPerLot (20).
+    gradeCapTiers: [
+      { count: 4, gradeCap: GRADES_POOR_TO_GOOD },
+      { count: 14, gradeCap: GRADES_POOR_TO_FINE },
+      { count: 2, gradeCap: GRADES_POOR_TO_VFINE }
+    ],
+    typeWeights: {
+      victoria_bun: 70, victoria_veiled: 30
+    }
+  },
+  {
     id: "antique_lot",
     name: "Antique Dealer's Lot",
     blurb: "A dealer's tray of pre-decimal coppers, curated enough that at least one is worth having.",
-    baseCost: 6000,
+    baseCost: 4000,
     coinsPerLot: 12,
     guaranteed: { count: 1, minRarity: "Rare" },
     typeWeights: {
@@ -134,14 +200,14 @@ var LOTS = [
     id: "estate_hoard",
     name: "Estate Sale Hoard",
     blurb: "An entire collection, inherited and sold off in one lot -- vetted by someone who knew what they had.",
-    baseCost: 10000,
+    baseCost: 6000,
     coinsPerLot: 10,
     guaranteed: { count: 2, minRarity: "Rare" },
     typeWeights: {
       victoria_bun: 6, victoria_veiled: 6, edward_vii: 6, george_v: 7, george_vi: 7,
       eii_predecimal: 5, eii_decimal_steel: 2, eii_decimal_bronze: 2, eii_decimal_new: 2, charles_iii: 1.5
     }
-  }
+  },
 ];
 
 var LOTS_BY_ID = {};

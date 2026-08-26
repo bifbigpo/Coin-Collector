@@ -13,6 +13,15 @@ var RARITY = {
   Legendary: { label: "Legendary", weightMult: 1 }
 };
 
+// One-off bonus paid the first time a type's full run is collected (see
+// checkCollectionBonuses in engine.js). Flat per type rather than derived
+// from coin values, and scaled to how rare the *type itself* is -- ranked
+// by commonValue, an ordinary year's baseline worth -- so a jackpot key
+// date landing in an otherwise-common run (New Penny, George V) doesn't
+// inflate the payout. Anchored at the "New Penny" run (commonValue 3) as
+// the £10 base, running down to £1 for the most common run (steel,
+// commonValue 1) and up to £200 for the rarest (Bun Head, commonValue 250);
+// types with equal commonValue (Veiled Head / Edward VII) share a tier.
 var PENNY_TYPES = [
   {
     id: "victoria_bun",
@@ -21,6 +30,7 @@ var PENNY_TYPES = [
     yearStart: 1860,
     yearEnd: 1894,
     commonValue: 250,
+    firstCompleteBonus: 20000, // £200 -- rarest run
     keyDates: {
       // Lowest mintage of the bun head series (~254,000) -- the classic key date.
       1869: { rarity: "Rare", value: 35000, note: "key date — lowest mintage of the type" }
@@ -33,6 +43,7 @@ var PENNY_TYPES = [
     yearStart: 1895,
     yearEnd: 1901,
     commonValue: 200,
+    firstCompleteBonus: 15000, // £150
     keyDates: {
       // 1897 exists with two reverse dies depending on how high the sea
       // sits behind Britannia. "High Tide" is the scarcer of the two.
@@ -46,6 +57,7 @@ var PENNY_TYPES = [
     yearStart: 1902,
     yearEnd: 1910,
     commonValue: 200,
+    firstCompleteBonus: 15000, // £150 -- tied with Veiled Head at the same commonValue
     keyDates: {
       // The first 1902 reverse dies sat the sea too low, exposing rocks
       // around Britannia's feet, before being corrected later that year.
@@ -59,6 +71,7 @@ var PENNY_TYPES = [
     yearStart: 1911,
     yearEnd: 1936,
     commonValue: 150,
+    firstCompleteBonus: 10000, // £100
     keyDates: {
       // The single most famous British coin rarity: only 7 were struck,
       // none for circulation. Auction records run well into six figures.
@@ -82,6 +95,7 @@ var PENNY_TYPES = [
     yearStart: 1937,
     yearEnd: 1952,
     commonValue: 80,
+    firstCompleteBonus: 6000, // £60
     keyDates: {
       // 1950 and 1951 had tiny mintages (240,000 and 120,000), struck
       // mostly for colonial circulation rather than the home market.
@@ -99,6 +113,7 @@ var PENNY_TYPES = [
     yearStart: 1953,
     yearEnd: 1967, // no pennies struck for circulation 1968-1970, ahead of decimalisation
     commonValue: 50,
+    firstCompleteBonus: 3500, // £35
     keyDates: {
       // No pennies were struck for UK circulation in 1954 -- genuine
       // specimens are exceptionally rare and hotly disputed when they surface.
@@ -113,6 +128,7 @@ var PENNY_TYPES = [
     yearStart: 1971, // Decimalisation Day, 15 Feb 1971
     yearEnd: 1981,
     commonValue: 3,
+    firstCompleteBonus: 1000, // £10 -- base bonus this scale is anchored to
     keyDates: {
       // No 1p or 2p coins were struck for general circulation in 1972 --
       // there was still a surplus from the 1971 changeover. They only
@@ -127,7 +143,8 @@ var PENNY_TYPES = [
     coinName: "One Penny",
     yearStart: 1982, // wording changed from "NEW PENNY" to "ONE PENNY"
     yearEnd: 1991,
-    commonValue: 2
+    commonValue: 2,
+    firstCompleteBonus: 300 // £3
   },
   {
     id: "eii_decimal_steel",
@@ -136,7 +153,8 @@ var PENNY_TYPES = [
     coinName: "One Penny",
     yearStart: 1992, // alloy switched from bronze to copper-plated steel -- a magnet sticks to these
     yearEnd: 2022,
-    commonValue: 1
+    commonValue: 1,
+    firstCompleteBonus: 100 // £1 -- most common run
   },
   {
     id: "charles_iii",
@@ -145,7 +163,8 @@ var PENNY_TYPES = [
     coinName: "One Penny",
     yearStart: 2023,
     yearEnd: 2025, // extend as later dates are confirmed
-    commonValue: 5
+    commonValue: 5,
+    firstCompleteBonus: 1500 // £15
   }
 ];
 
@@ -181,4 +200,6 @@ PENNY_TYPES.forEach(function (type) {
 var COINS_BY_ID = {};
 COINS.forEach(function (c) { COINS_BY_ID[c.id] = c; });
 
-var COIN_GROUPS = PENNY_TYPES.map(function (t) { return { id: t.id, label: t.label }; });
+var COIN_GROUPS = PENNY_TYPES.map(function (t) {
+  return { id: t.id, label: t.label, firstCompleteBonus: t.firstCompleteBonus };
+});

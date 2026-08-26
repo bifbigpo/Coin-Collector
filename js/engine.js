@@ -2,6 +2,7 @@ var MAX_TRAY = 250;
 var TICK_MS = 300;
 var BASE_IDENTIFY_MS = 1000;
 var BASE_GRADE_DURATION_MS = 5000;
+var MIN_GRADE_DURATION_MS = 1000;
 var BASE_GRADING_TRAY_CAPACITY = 5;
 
 // Standard numismatic grading scale, roughest to finest. Each tier gets a
@@ -175,10 +176,14 @@ function gradingTrayCapacity() {
   return BASE_GRADING_TRAY_CAPACITY + getLevel("grade_tray_size");
 }
 
+// Decay rate chosen so the top Practiced Hands level (8) lands exactly on
+// the 1-second floor: BASE_GRADE_DURATION_MS * 0.8178^8 rounds to 1000ms.
+var GRADE_SPEED_DECAY = 0.8178;
+
 function gradeDurationMs() {
   var level = getLevel("grade_speed");
-  var duration = BASE_GRADE_DURATION_MS * Math.pow(0.85, level);
-  return Math.max(800, Math.round(duration));
+  var duration = BASE_GRADE_DURATION_MS * Math.pow(GRADE_SPEED_DECAY, level);
+  return Math.max(MIN_GRADE_DURATION_MS, Math.round(duration));
 }
 
 // How many of the grade tray's slots are currently taken -- by a coin
@@ -313,7 +318,7 @@ function buyLot(lotId) {
   var guaranteedCount = 0;
   var guaranteedPool = null;
   if (lot.guaranteed) {
-    guaranteedPool = buildLotPool(lot, lot.guaranteed.minRarity);
+    guaranteedPool = buildLotPool(lot, lot.guaranteed.minRarity, lot.guaranteed.groups);
     guaranteedCount = Math.min(lot.guaranteed.count, count);
   }
   state.cash -= cost;
@@ -333,7 +338,7 @@ function buyLot(lotId) {
       gradeRemainingMs: 0,
       graded: false,
       trueGrade: null,
-      gradeCap: lot.gradeCap || null
+      gradeCap: gradeCapForIndex(lot, i)
     });
   }
   state.stats.lotsBought++;
@@ -570,7 +575,7 @@ function checkCollectionBonuses() {
     var complete = coinsInGroup.every(function (c) { return state.collection[c.id]; });
     if (complete) {
       state.groupBonusesClaimed[group.id] = true;
-      var reward = coinsInGroup.reduce(function (sum, c) { return sum + c.value; }, 0) * 2;
+      var reward = group.firstCompleteBonus;
       state.cash += reward;
       queueToast(group.label + " collection complete! +" + formatMoney(reward) + " and a permanent +5% sale bonus.");
     }
@@ -664,6 +669,6 @@ function tick() {
 
   if (changed) {
     saveState();
-    renderAll();
+    requestRender();
   }
 }

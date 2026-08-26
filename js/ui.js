@@ -23,12 +23,45 @@ function flushToasts() {
 function renderAll() {
   renderHeader();
   renderShop();
-  renderCheckChange();
   renderUpgrades();
   renderTray();
   renderGradingTray();
   renderCollection();
   flushToasts();
+}
+
+// tick() drives renderAll() up to a few times a second while anything is
+// identifying, grading, or cooling down -- and renderAll() rebuilds every
+// button from scratch each time. If that lands between a button's
+// mousedown and its mouseup, the button is torn down and replaced mid-
+// press, the browser never dispatches the click event, and the press is
+// silently lost -- more often the faster you click. Routing tick's own
+// renders through requestRender() instead of calling renderAll() directly
+// defers them until the mouse button is back up, so a render can never
+// land mid-press.
+var mouseIsDown = false;
+var renderPending = false;
+
+function requestRender() {
+  if (mouseIsDown) {
+    renderPending = true;
+    return;
+  }
+  renderAll();
+}
+
+function setMouseDown(isDown) {
+  mouseIsDown = isDown;
+  if (isDown || !renderPending) return;
+  // The matching click, if any, fires immediately after mouseup and runs
+  // its own renderAll() -- wait one tick past that before catching up, so
+  // this deferred render can't replace the button out from under it.
+  setTimeout(function () {
+    if (renderPending) {
+      renderPending = false;
+      renderAll();
+    }
+  }, 0);
 }
 
 function renderHeader() {
@@ -50,39 +83,36 @@ function renderHeader() {
 function renderShop() {
   var container = document.getElementById("lot-list");
   container.innerHTML = "";
-  LOTS.filter(function (lot) { return !lot.isFree; }).forEach(function (lot) {
+  LOTS.forEach(function (lot) {
     var card = document.createElement("div");
     card.className = "card lot-card" + (state.selectedLot === lot.id ? " selected" : "");
 
     var cost = lotCost(lot);
     var count = lotCoinCount(lot);
+    var full = state.tray.length + count > MAX_TRAY;
+    var cooldownRemaining = lot.cooldownMs ? lotCooldownRemaining(lot.id) : 0;
+    var buyLabel = cooldownRemaining > 0
+      ? "Available in " + Math.ceil(cooldownRemaining / 1000) + "s"
+      : "Buy for " + (lot.isFree ? "Free" : formatMoney(cost));
+    var buyDisabled = cooldownRemaining > 0 || full || state.cash < cost;
+
+    // The free "Check Your Change" refill has nothing to compare against
+    // other lots on, so it skips the select toggle other lots use.
+    var selectButton = lot.isFree ? "" :
+      '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
+      (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>";
+
     card.innerHTML =
       '<div class="card-title">' + lot.name + "</div>" +
       '<div class="card-blurb">' + lot.blurb + "</div>" +
       '<div class="card-meta">' + count + " coins</div>" +
       '<div class="card-actions">' +
-      '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
-      (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>" +
+      selectButton +
       '<button class="btn btn-primary" data-action="buy-lot" data-id="' + lot.id + '"' +
-      (state.cash < cost ? " disabled" : "") + ">Buy for " + formatMoney(cost) + "</button>" +
+      (buyDisabled ? " disabled" : "") + ">" + buyLabel + "</button>" +
       "</div>";
     container.appendChild(card);
   });
-}
-
-function renderCheckChange() {
-  var btn = document.getElementById("check-change-btn");
-  if (!btn) return;
-  var lot = LOTS_BY_ID["check_change"];
-  var remaining = lotCooldownRemaining("check_change");
-  if (remaining > 0) {
-    btn.textContent = "Check Your Change (" + Math.ceil(remaining / 1000) + "s)";
-    btn.disabled = true;
-  } else {
-    var full = state.tray.length + lotCoinCount(lot) > MAX_TRAY;
-    btn.textContent = "Check Your Change (Free)";
-    btn.disabled = full;
-  }
 }
 
 function renderUpgrades() {
@@ -297,7 +327,16 @@ function renderCollection() {
       var owned = !!state.collection[coin.id];
       var slot = document.createElement("div");
       slot.className = "collection-slot" + (owned ? " owned rarity-" + coin.rarity : " unknown");
-      slot.title = owned ? coin.name + " - " + coin.subtitle : "Not yet found";
+      // Hovering an owned coin surfaces what it's worth; hovering a gap in
+      // the album surfaces what belongs there and how rare it is to find,
+      // since the slot itself only ever shows a "?".
+      if (owned) {
+        var ownedEntry = state.collection[coin.id];
+        slot.title = coin.name + " — " + coin.subtitle + " · " + GRADES_BY_ID[ownedEntry.trueGrade].label +
+          " · Value " + formatMoney(coinSuggestedValue({ coinId: coin.id, trueGrade: ownedEntry.trueGrade, graded: ownedEntry.graded }));
+      } else {
+        slot.title = coin.name + " — " + coin.subtitle + " · " + RARITY[coin.rarity].label + " · Not yet found";
+      }
       slot.innerHTML = owned
         ? '<div class="coin-face">' + pixelCoinImgHTML(coin, state.collection[coin.id].trueGrade, "pixel-coin-sm") + '</div>' +
           '<div class="coin-label">' + coin.subtitle + '</div>' +
