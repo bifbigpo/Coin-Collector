@@ -664,6 +664,6 @@ function tick() {
 
   if (changed) {
     saveState();
-    renderAll();
+    requestRender();
   }
 }

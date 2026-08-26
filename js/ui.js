@@ -30,6 +30,40 @@ function renderAll() {
   flushToasts();
 }
 
+// tick() drives renderAll() up to a few times a second while anything is
+// identifying, grading, or cooling down -- and renderAll() rebuilds every
+// button from scratch each time. If that lands between a button's
+// mousedown and its mouseup, the button is torn down and replaced mid-
+// press, the browser never dispatches the click event, and the press is
+// silently lost -- more often the faster you click. Routing tick's own
+// renders through requestRender() instead of calling renderAll() directly
+// defers them until the mouse button is back up, so a render can never
+// land mid-press.
+var mouseIsDown = false;
+var renderPending = false;
+
+function requestRender() {
+  if (mouseIsDown) {
+    renderPending = true;
+    return;
+  }
+  renderAll();
+}
+
+function setMouseDown(isDown) {
+  mouseIsDown = isDown;
+  if (isDown || !renderPending) return;
+  // The matching click, if any, fires immediately after mouseup and runs
+  // its own renderAll() -- wait one tick past that before catching up, so
+  // this deferred render can't replace the button out from under it.
+  setTimeout(function () {
+    if (renderPending) {
+      renderPending = false;
+      renderAll();
+    }
+  }, 0);
+}
+
 function renderHeader() {
   document.getElementById("cash-display").textContent = formatMoney(state.cash);
   var groups = claimedGroupCount();

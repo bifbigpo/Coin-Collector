@@ -25,6 +25,8 @@ function handleClick(e) {
 
 document.addEventListener("DOMContentLoaded", function () {
   document.body.addEventListener("click", handleClick);
+  document.addEventListener("mousedown", function () { setMouseDown(true); });
+  document.addEventListener("mouseup", function () { setMouseDown(false); });
   renderAll();
   setInterval(tick, TICK_MS);
 });
