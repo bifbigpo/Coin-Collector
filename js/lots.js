@@ -161,16 +161,18 @@ var LOTS = [
     }
   },
   {
-    // Priced at ~85% of this bag's own expected raw value, same principle
-    // as the rest of the shop (see the pricing note above) -- 30 coins at
-    // an ~£3.31 expected value each is ~£99.16 raw, so £85 here. No
-    // guaranteed pick yet; the oldest, priciest common-value coins in the
-    // game (commonValue 250/200p) already give it the highest expected
-    // value of any lot without needing one.
+    // Real price is ~85% of this bag's own expected raw value, same
+    // principle as the rest of the shop (see the pricing note above) --
+    // 30 coins at an ~£3.31 expected value each is ~£99.16 raw, which
+    // prices out to ~£85. Temporarily dropped to £10 for testing; put
+    // baseCost back to 8500 once that's done. No guaranteed pick yet; the
+    // oldest, priciest common-value coins in the game (commonValue
+    // 250/200p) already give it the highest expected value of any lot
+    // without needing one.
     id: "victorian_bag",
     name: "Victorian Penny Bag",
     blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901.",
-    baseCost: 8500,
+    baseCost: 1000,
     coinsPerLot: 30,
     typeWeights: {
       victoria_bun: 70, victoria_veiled: 30
