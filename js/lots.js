@@ -52,6 +52,31 @@ function buildLotPool(lot, minRarity, groupIds) {
 // grading scale -- until you're buying from someone who sorts stock.
 var BEGINNER_GRADES = ["poor", "fair", "good", "vgood"];
 
+// Narrower grade caps for lots that mix a few different tiers of "how
+// worn" within the same bag (see gradeCapTiers below) rather than one cap
+// across every coin.
+var GRADES_POOR_TO_GOOD = ["poor", "fair", "good"];
+var GRADES_POOR_TO_FINE = ["poor", "fair", "good", "vgood", "fine"];
+var GRADES_POOR_TO_VFINE = ["poor", "fair", "good", "vgood", "fine", "vfine"];
+
+// Looks up the grade cap for the i-th coin drawn from a lot. Most lots use
+// a single lot.gradeCap for every coin; a lot can instead set
+// gradeCapTiers -- an ordered list of { count, gradeCap } slices whose
+// counts should sum to coinsPerLot -- to mix different wear ranges within
+// the same bag (e.g. mostly well-worn with a couple of better finds).
+// Falls back to lot.gradeCap (or ungraded/no cap) past the end of the
+// list, so a mismatched total degrades gracefully rather than erroring.
+function gradeCapForIndex(lot, index) {
+  if (!lot.gradeCapTiers) return lot.gradeCap || null;
+  var offset = 0;
+  for (var i = 0; i < lot.gradeCapTiers.length; i++) {
+    var tier = lot.gradeCapTiers[i];
+    if (index < offset + tier.count) return tier.gradeCap;
+    offset += tier.count;
+  }
+  return lot.gradeCap || null;
+}
+
 // Not a purchasable lot -- this seeds the very first tray for free, as if
 // the player is going through a deceased family member's house. Weighted
 // toward the decades a long life would have spanned, with a handful of
@@ -163,17 +188,25 @@ var LOTS = [
   {
     // Real price is ~85% of this bag's own expected raw value, same
     // principle as the rest of the shop (see the pricing note above) --
-    // 30 coins at an ~£3.31 expected value each is ~£99.16 raw, which
-    // prices out to ~£85. Temporarily dropped to £10 for testing; put
-    // baseCost back to 8500 once that's done. No guaranteed pick yet; the
+    // 20 coins at an ~£3.31 expected value each is ~£66.11 raw, which
+    // prices out to ~£55. Temporarily dropped to £10 for testing; put
+    // baseCost back to 5500 once that's done. No guaranteed pick yet; the
     // oldest, priciest common-value coins in the game (commonValue
     // 250/200p) already give it the highest expected value of any lot
     // without needing one.
     id: "victorian_bag",
     name: "Victorian Penny Bag",
-    blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901.",
+    blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901. Well-circulated stock -- don't expect better than Very Fine.",
     baseCost: 1000,
-    coinsPerLot: 30,
+    coinsPerLot: 20,
+    // 4 coins no better than Good, 14 no better than Fine, 2 no better
+    // than Very Fine -- so nothing in the bag ever rolls Uncirculated or
+    // Mint. Counts must sum to coinsPerLot (20).
+    gradeCapTiers: [
+      { count: 4, gradeCap: GRADES_POOR_TO_GOOD },
+      { count: 14, gradeCap: GRADES_POOR_TO_FINE },
+      { count: 2, gradeCap: GRADES_POOR_TO_VFINE }
+    ],
     typeWeights: {
       victoria_bun: 70, victoria_veiled: 30
     }

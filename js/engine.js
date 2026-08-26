@@ -338,7 +338,7 @@ function buyLot(lotId) {
       gradeRemainingMs: 0,
       graded: false,
       trueGrade: null,
-      gradeCap: lot.gradeCap || null
+      gradeCap: gradeCapForIndex(lot, i)
     });
   }
   state.stats.lotsBought++;
