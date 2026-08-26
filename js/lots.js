@@ -141,7 +141,7 @@ var LOTS = [
     id: "antique_lot",
     name: "Antique Dealer's Lot",
     blurb: "A dealer's tray of pre-decimal coppers, curated enough that at least one is worth having.",
-    baseCost: 6000,
+    baseCost: 4000,
     coinsPerLot: 12,
     guaranteed: { count: 1, minRarity: "Rare" },
     typeWeights: {
@@ -152,7 +152,7 @@ var LOTS = [
     id: "estate_hoard",
     name: "Estate Sale Hoard",
     blurb: "An entire collection, inherited and sold off in one lot -- vetted by someone who knew what they had.",
-    baseCost: 10000,
+    baseCost: 6000,
     coinsPerLot: 10,
     guaranteed: { count: 2, minRarity: "Rare" },
     typeWeights: {
