@@ -588,6 +588,43 @@ function checkCollectionBonuses() {
   }
 }
 
+function isMessageDelivered(id) {
+  return state.deliveredMessages.indexOf(id) !== -1;
+}
+
+function deliverMessage(id) {
+  if (isMessageDelivered(id)) return;
+  state.deliveredMessages.push(id);
+  queueToast("New message: \"" + MESSAGES_BY_ID[id].subject + "\"");
+}
+
+// Delivers any not-yet-delivered message whose trigger condition is now
+// true. Cheap to call often -- already-delivered messages are skipped.
+function checkMessageTriggers() {
+  MESSAGES.forEach(function (m) {
+    if (!isMessageDelivered(m.id) && m.trigger(state)) deliverMessage(m.id);
+  });
+}
+
+function unreadMessageCount() {
+  return state.deliveredMessages.filter(function (id) { return !state.readMessages[id]; }).length;
+}
+
+function markMessageRead(id) {
+  if (!isMessageDelivered(id) || state.readMessages[id]) return;
+  state.readMessages[id] = true;
+  saveState();
+}
+
+// Newest-first, for the inbox list.
+function getInboxMessages() {
+  return state.deliveredMessages
+    .map(function (id) { return MESSAGES_BY_ID[id]; })
+    .filter(Boolean)
+    .slice()
+    .reverse();
+}
+
 function buyUpgrade(id) {
   var def = UPGRADES_BY_ID[id];
   if (!def) return false;
@@ -666,6 +703,10 @@ function tick() {
 
   if (processIdentification()) changed = true;
   if (processGradingTray()) changed = true;
+
+  var messageCountBefore = state.deliveredMessages.length;
+  checkMessageTriggers();
+  if (state.deliveredMessages.length !== messageCountBefore) changed = true;
 
   if (changed) {
     saveState();

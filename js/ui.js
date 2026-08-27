@@ -20,6 +20,29 @@ function flushToasts() {
   toastQueue = [];
 }
 
+// Messages inbox is modal UI, not game state -- kept as plain module
+// variables here rather than in `state` so opening/reading a letter never
+// needs a save.
+var messagesOpen = false;
+var openMessageId = null;
+
+function toggleMessages() {
+  messagesOpen = !messagesOpen;
+  if (messagesOpen && !openMessageId) {
+    var inbox = getInboxMessages();
+    if (inbox.length) openMessage(inbox[0].id);
+  }
+}
+
+function openMessage(id) {
+  openMessageId = id;
+  markMessageRead(id);
+}
+
+function closeMessages() {
+  messagesOpen = false;
+}
+
 function renderAll() {
   renderHeader();
   renderShop();
@@ -27,7 +50,49 @@ function renderAll() {
   renderTray();
   renderGradingTray();
   renderCollection();
+  renderMessages();
   flushToasts();
+}
+
+function renderMessages() {
+  var unread = unreadMessageCount();
+  var badge = document.getElementById("messages-badge");
+  badge.hidden = unread === 0;
+  badge.textContent = unread;
+
+  var modal = document.getElementById("messages-modal");
+  modal.hidden = !messagesOpen;
+  if (!messagesOpen) return;
+
+  var inbox = getInboxMessages();
+
+  var listContainer = document.getElementById("messages-list");
+  listContainer.innerHTML = "";
+  inbox.forEach(function (m) {
+    var row = document.createElement("div");
+    row.className = "message-row" +
+      (m.id === openMessageId ? " selected" : "") +
+      (state.readMessages[m.id] ? "" : " unread");
+    row.setAttribute("data-action", "read-message");
+    row.setAttribute("data-id", m.id);
+    row.innerHTML =
+      '<div class="message-row-from">' + m.from + "</div>" +
+      '<div class="message-row-subject">' + m.subject + "</div>";
+    listContainer.appendChild(row);
+  });
+
+  var reader = document.getElementById("messages-reader");
+  var openMessageDef = MESSAGES_BY_ID[openMessageId];
+  if (!openMessageDef) {
+    reader.innerHTML = '<div class="message-empty">No messages yet.</div>';
+    return;
+  }
+  reader.innerHTML =
+    '<div class="message-subject">' + openMessageDef.subject + "</div>" +
+    '<div class="message-from">From: ' + openMessageDef.from + "</div>" +
+    '<div class="message-body">' +
+    openMessageDef.body.map(function (p) { return "<p>" + p + "</p>"; }).join("") +
+    "</div>";
 }
 
 // tick() drives renderAll() up to a few times a second while anything is

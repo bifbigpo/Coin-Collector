@@ -15,6 +15,9 @@
     <div class="header-right">
       <div id="cash-display" class="cash-display">£0.00</div>
       <div id="stat-line" class="stat-line"></div>
+      <button id="messages-btn" class="btn btn-outline btn-small messages-btn" data-action="toggle-messages">
+        Messages <span id="messages-badge" class="messages-badge" hidden></span>
+      </button>
       <button class="btn btn-outline btn-small" data-action="reset-save">Reset</button>
     </div>
   </header>
@@ -62,9 +65,23 @@
 
   <div id="toasts" class="toasts"></div>
 
+  <div id="messages-modal" class="modal-overlay" hidden>
+    <div class="modal messages-modal">
+      <div class="modal-header">
+        <h2>Messages</h2>
+        <button class="btn btn-small btn-outline" data-action="close-messages">Close</button>
+      </div>
+      <div class="messages-body">
+        <div id="messages-list" class="messages-list"></div>
+        <div id="messages-reader" class="messages-reader"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/coins.js"></script>
   <script src="js/lots.js"></script>
   <script src="js/upgrades.js"></script>
+  <script src="js/messages.js"></script>
   <script src="js/state.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/pixelcoin.js"></script>

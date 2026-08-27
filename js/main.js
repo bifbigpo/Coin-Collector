@@ -19,6 +19,9 @@ function handleClick(e) {
     case "sell-duplicates": sellAllDuplicates(); break;
     case "keep-needed": keepAllNeeded(); break;
     case "reset-save": resetState(); return;
+    case "toggle-messages": toggleMessages(); break;
+    case "close-messages": closeMessages(); break;
+    case "read-message": openMessage(id); break;
   }
   renderAll();
 }
@@ -27,6 +30,8 @@ document.addEventListener("DOMContentLoaded", function () {
   document.body.addEventListener("click", handleClick);
   document.addEventListener("mousedown", function () { setMouseDown(true); });
   document.addEventListener("mouseup", function () { setMouseDown(false); });
+  checkMessageTriggers();
+  saveState();
   renderAll();
   setInterval(tick, TICK_MS);
 });

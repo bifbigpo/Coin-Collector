@@ -65,7 +65,9 @@ function defaultState() {
     },
     groupBonusesClaimed: {}, // groupId -> true
     fullCollectionBonusClaimed: false,
-    collectionQualityBonusClaimed: {} // groupId -> highest GRADE_INDEX tier already paid out for that type
+    collectionQualityBonusClaimed: {}, // groupId -> highest GRADE_INDEX tier already paid out for that type
+    deliveredMessages: [], // ids of MESSAGES delivered so far, in delivery order
+    readMessages: {} // messageId -> true
   };
 }
 
