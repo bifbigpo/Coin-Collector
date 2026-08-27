@@ -12,6 +12,12 @@ There's no dev server or build command. Just open `index.html` in a browser (or 
 
 There is no lint, test, or typecheck command configured — verify changes by loading the page and exercising the UI directly.
 
+## Simulating the economy
+
+`tools/simulate-collection-time.js` is a Node dev tool (no deps) that Monte Carlo-simulates a near-optimal playthrough to answer balance questions like "how long to complete the full collection?" It loads `js/coins.js` and `js/lots.js` directly via `vm` (real `COINS` catalog, real `buildLotPool` weighting — no separate data file to keep in sync), so it stays accurate as those files change. Run it with `node tools/simulate-collection-time.js [trials]` (defaults to 500 trials).
+
+It models: the free starting tray, bootstrapping on Decimal Charity Bag until Estate Sale Hoard is affordable, then buying Estate Sale Hoard exclusively (the only lot spanning every penny group, and the best per-draw odds at all three `Legendary` key dates — the 1933 George V, 1952 George VI, and 1954 pre-decimal pennies — which gate full completion far more than anything else in the catalog), selling every duplicate at the base 60% cut to fund the next buy. It reports results in coins-identified (the real bottleneck: `maxIdentifySlots()` is a hard-coded `1` with no upgrade, so every draw costs a fixed 1s) converted to play time, since there's no offline-progress mechanic. Reuse or extend this script rather than re-deriving pool math by hand whenever a rebalance needs "how long will this take" numbers — e.g. after changing `RARITY_POOL_MULTIPLIER`, a lot's `typeWeights`/`guaranteed`, or adding new key dates.
+
 ## Script load order matters
 
 `index.html` loads scripts in this order, and later files depend on globals defined by earlier ones (there's no module system — everything is global `var`/`function`):
