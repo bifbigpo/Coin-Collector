@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main
+      - claude/language-learning-game-prototype-6ar0j6
   workflow_dispatch:
 
 permissions:
