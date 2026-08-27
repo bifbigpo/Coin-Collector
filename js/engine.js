@@ -592,6 +592,15 @@ function isMessageDelivered(id) {
   return state.deliveredMessages.indexOf(id) !== -1;
 }
 
+// True once a coin has turned up identified, whether it's sitting in the
+// tray awaiting a decision or already banked in the collection -- used by
+// per-coin discovery message triggers so they fire the moment a coin is
+// revealed, not only once it's kept.
+function hasSeenCoin(coinId) {
+  if (state.collection[coinId]) return true;
+  return state.tray.some(function (e) { return e.identified && e.coinId === coinId; });
+}
+
 function deliverMessage(id) {
   if (isMessageDelivered(id)) return;
   state.deliveredMessages.push(id);

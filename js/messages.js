@@ -19,6 +19,23 @@ var MESSAGES = [
       "Good hunting.",
       "-- Grandpa Alfred"
     ]
+  },
+  {
+    id: "coin_george_v_1933",
+    from: "Grandpa's Notebook",
+    subject: "The 1933 Penny",
+    // Fires the moment a 1933 penny has been identified, whether or not
+    // it's been kept -- hasSeenCoin() (engine.js) checks both the tray
+    // and the collection.
+    trigger: function () { return hasSeenCoin("george_v_1933"); },
+    body: [
+      "Found in the jar, tucked inside an old tobacco tin: a page of notes on the one coin I always hoped might turn up. If you've got a genuine 1933 penny in your hand, hold onto it -- you're holding one of six or seven that exist anywhere in the world.",
+      "None of them were ever meant to be spent. By 1932 the banks were so overstocked with pennies that the Royal Mint stopped striking them for circulation entirely -- officially, 1933 should have no pennies at all.",
+      "But tradition called for a full set of that year's coins to be sealed beneath the foundation stone of any building going up, so the Mint struck a tiny batch for that purpose only. Nobody wrote down exactly how many -- the Mint's own museum guesses six or seven.",
+      "One buried set didn't stay buried. In August 1970, thieves posing as workmen dug a set out from under a church foundation stone in Middleton, near Leeds. It's never been seen since. A second set was dug up on purpose soon after and sold at Sotheby's in 1972, rather than risk the same fate.",
+      "The rest live in the Royal Mint Museum, the British Museum, and a small handful of private collections. The last genuine example to sell at public auction made $165,000 in 2016 -- a record for any bronze or copper coin, British or otherwise.",
+      "Whatever you're holding, it's worth more than the rest of the jar combined."
+    ]
   }
 ];
 
