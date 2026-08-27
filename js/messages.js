@@ -10,11 +10,10 @@
 // carries `kind: "discovery"` and `eyebrow` (a short label shown instead
 // of "From:") so ui.js can give it a distinct, non-letter treatment.
 
-// TEMPORARY: forces every discovery message straight to the inbox on load,
-// bypassing hasSeenCoin(), so the new rare-coin dossiers can be proofread
-// without grinding for each coin. Flip back to false once they're reviewed
-// -- the real per-coin trigger is still there underneath, untouched.
-var PROOFREAD_ALL_DISCOVERY_MESSAGES = true;
+// Forces every discovery message straight to the inbox on load, bypassing
+// hasSeenCoin() -- flip to true for proofreading without grinding for each
+// coin. Leave false for real play so each dossier unlocks with its coin.
+var PROOFREAD_ALL_DISCOVERY_MESSAGES = false;
 
 var MESSAGES = [
   {
