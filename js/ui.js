@@ -69,14 +69,16 @@ function renderMessages() {
   var listContainer = document.getElementById("messages-list");
   listContainer.innerHTML = "";
   inbox.forEach(function (m) {
+    var isDiscovery = m.kind === "discovery";
     var row = document.createElement("div");
     row.className = "message-row" +
+      (isDiscovery ? " message-row-discovery" : "") +
       (m.id === openMessageId ? " selected" : "") +
       (state.readMessages[m.id] ? "" : " unread");
     row.setAttribute("data-action", "read-message");
     row.setAttribute("data-id", m.id);
     row.innerHTML =
-      '<div class="message-row-from">' + m.from + "</div>" +
+      '<div class="message-row-from">' + (isDiscovery ? m.eyebrow : m.from) + "</div>" +
       '<div class="message-row-subject">' + m.subject + "</div>";
     listContainer.appendChild(row);
   });
@@ -87,9 +89,11 @@ function renderMessages() {
     reader.innerHTML = '<div class="message-empty">No messages yet.</div>';
     return;
   }
+  var openIsDiscovery = openMessageDef.kind === "discovery";
   reader.innerHTML =
-    '<div class="message-subject">' + openMessageDef.subject + "</div>" +
-    '<div class="message-from">From: ' + openMessageDef.from + "</div>" +
+    '<div class="message-subject' + (openIsDiscovery ? " message-subject-discovery" : "") + '">' + openMessageDef.subject + "</div>" +
+    '<div class="message-from' + (openIsDiscovery ? " message-eyebrow-discovery" : "") + '">' +
+    (openIsDiscovery ? openMessageDef.eyebrow : "From: " + openMessageDef.from) + "</div>" +
     '<div class="message-body">' +
     openMessageDef.body.map(function (p) { return "<p>" + p + "</p>"; }).join("") +
     "</div>";

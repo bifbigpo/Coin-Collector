@@ -585,9 +585,23 @@ h2 {
   border: 1px solid var(--accent);
 }
 
+/* Rare-coin discovery notices get the same gold treatment as Legendary
+   coins elsewhere (.rarity-Legendary) so they read as a standout event,
+   not just another letter. */
+.message-row-discovery {
+  border-left: 3px solid var(--c-legendary);
+}
+
 .message-row-from {
   font-size: 0.72rem;
   color: var(--text-dim);
+}
+
+.message-row-discovery .message-row-from {
+  color: var(--c-legendary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
 }
 
 .message-row-subject {
@@ -613,10 +627,23 @@ h2 {
   margin-bottom: 2px;
 }
 
+.message-subject-discovery {
+  color: var(--c-legendary);
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+
 .message-from {
   color: var(--text-dim);
   font-size: 0.8rem;
   margin-bottom: 14px;
+}
+
+.message-eyebrow-discovery {
+  color: var(--c-legendary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  font-size: 0.72rem;
 }
 
 .message-body p {
