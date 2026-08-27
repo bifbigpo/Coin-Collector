@@ -32,8 +32,11 @@ var PENNY_TYPES = [
     commonValue: 250,
     firstCompleteBonus: 20000, // £200 -- rarest run
     keyDates: {
-      // Lowest mintage of the bun head series (~254,000) -- the classic key date.
-      1869: { rarity: "Rare", value: 35000, note: "key date — lowest mintage of the type" }
+      // The classic Bun Head key date -- not the lowest mintage of the run
+      // (2,580,480 struck) but the scarcest in survivors, having worn out
+      // of circulation and been melted down disproportionately more than
+      // other years of the series.
+      1869: { rarity: "Rare", value: 35000, note: "key date — scarcest survivor of the type" }
     }
   },
   {
@@ -101,8 +104,12 @@ var PENNY_TYPES = [
       // mostly for colonial circulation rather than the home market.
       1950: { rarity: "Rare", value: 3500, note: "low mintage" },
       1951: { rarity: "VeryRare", value: 5500, note: "low mintage" },
-      // George VI died in Feb 1952 before 1952-dated pennies entered
-      // production; only a handful of pattern/proof pieces are known.
+      // Popular belief blames George VI's death in Feb 1952, but the real
+      // reason is a leftover surplus from the 1930s-40s that meant no more
+      // pennies were needed that year -- the King's death was a coincidence
+      // of timing, not the cause. Exactly one genuine 1952 proof penny is
+      // confirmed to exist (NGC-certified), unknown to collectors until it
+      // surfaced at auction in 1997.
       1952: { rarity: "Legendary", value: 8000000, note: "essentially unique" }
     }
   },
