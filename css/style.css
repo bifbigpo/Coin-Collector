@@ -15,6 +15,11 @@
   --c-rare: #4a90d9;
   --c-veryrare: #a463d9;
   --c-legendary: #d4af37;
+
+  /* Cinzel echoes the Roman inscriptional capitals British coin lettering
+     is drawn from -- used for headings and named things (coins, lots,
+     upgrades), never for body copy or small UI text at its size. */
+  --font-display: "Cinzel", "Trajan Pro", Georgia, serif;
 }
 
 * { box-sizing: border-box; }
@@ -29,6 +34,7 @@ body {
 h1, h2 {
   margin: 0;
   font-weight: 600;
+  font-family: var(--font-display);
 }
 
 h2 {
@@ -61,6 +67,7 @@ h2 {
 }
 
 .cash-display {
+  font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 700;
   color: var(--accent);
@@ -109,6 +116,7 @@ h2 {
 }
 
 .card-title {
+  font-family: var(--font-display);
   font-weight: 600;
   display: flex;
   justify-content: space-between;
@@ -301,6 +309,7 @@ h2 {
 .pixel-coin-sm { width: 32px; height: 32px; }
 
 .coin-name {
+  font-family: var(--font-display);
   font-weight: 700;
   font-size: 0.85rem;
   margin-top: 2px;
@@ -582,6 +591,7 @@ h2 {
 }
 
 .message-row-subject {
+  font-family: var(--font-display);
   font-size: 0.88rem;
   font-weight: 600;
 }
@@ -597,6 +607,7 @@ h2 {
 }
 
 .message-subject {
+  font-family: var(--font-display);
   font-size: 1.1rem;
   font-weight: 700;
   margin-bottom: 2px;
