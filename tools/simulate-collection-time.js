@@ -8,8 +8,12 @@
 // buildLotPool weighting) so results track the actual game data -- no
 // separate data file to keep in sync.
 //
-// Usage: node tools/simulate-collection-time.js [trials]
+// Usage: node tools/simulate-collection-time.js [trials] [--exclude-rarity=Rarity,...]
 //   trials defaults to 500.
+//   --exclude-rarity drops matching coins from the completion target
+//   entirely (they're still drawable and sellable, just not required) --
+//   e.g. --exclude-rarity=Legendary to ask "how long without the 3
+//   near-impossible key dates?"
 
 const fs = require("fs");
 const vm = require("vm");
@@ -22,10 +26,17 @@ vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(JS_DIR, file), "utf8"), sandbox, { filename: file });
 });
 
-const { COINS, LOTS, LOTS_BY_ID, STARTING_ESTATE, buildLotPool } = sandbox;
-const ALL_COIN_IDS = COINS.map((c) => c.id);
+const { COINS, LOTS, STARTING_ESTATE, buildLotPool } = sandbox;
 const COINS_BY_ID = {};
 COINS.forEach((c) => (COINS_BY_ID[c.id] = c));
+
+function parseExcludeRarity(argv) {
+  const flag = argv.find((a) => a.startsWith("--exclude-rarity="));
+  if (!flag) return [];
+  return flag.slice("--exclude-rarity=".length).split(",").filter(Boolean);
+}
+const EXCLUDED_RARITIES = parseExcludeRarity(process.argv.slice(2));
+const TARGET_COIN_IDS = COINS.filter((c) => EXCLUDED_RARITIES.indexOf(c.rarity) === -1).map((c) => c.id);
 
 function weightedPick(pool) {
   const entries = Object.keys(pool);
@@ -41,11 +52,54 @@ function weightedPick(pool) {
 // Pools depend only on the fixed catalog, so build each lot's once.
 const lotPools = {};
 LOTS.forEach((lot) => {
+  const pool = buildLotPool(lot);
+  const guaranteedPool = lot.guaranteed ? buildLotPool(lot, lot.guaranteed.minRarity, lot.guaranteed.groups) : null;
   lotPools[lot.id] = {
-    pool: buildLotPool(lot),
-    guaranteedPool: lot.guaranteed ? buildLotPool(lot, lot.guaranteed.minRarity, lot.guaranteed.groups) : null,
+    pool,
+    guaranteedPool,
+    total: Object.values(pool).reduce((a, b) => a + b, 0),
+    gTotal: guaranteedPool ? Object.values(guaranteedPool).reduce((a, b) => a + b, 0) : 0,
+    gCount: lot.guaranteed ? Math.min(lot.guaranteed.count, lot.coinsPerLot) : 0,
   };
 });
+
+// Expected fraction of this lot's draws that will land on a coin still
+// missing from the target set -- used to pick which lot to buy next (see
+// chooseLot below). Cheap to compute per decision: only iterates the
+// (shrinking) missing set, not the whole catalog.
+function expectedNewFractionPerDraw(lot, missingSet) {
+  const { pool, guaranteedPool, total, gTotal, gCount } = lotPools[lot.id];
+  const normalCount = lot.coinsPerLot - gCount;
+  let sumNormal = 0;
+  let sumGuaranteed = 0;
+  missingSet.forEach((id) => {
+    if (pool[id]) sumNormal += pool[id] / total;
+    if (guaranteedPool && guaranteedPool[id]) sumGuaranteed += guaranteedPool[id] / gTotal;
+  });
+  return (normalCount * sumNormal + gCount * sumGuaranteed) / lot.coinsPerLot;
+}
+
+// Greedily buys whichever affordable lot yields the most still-needed
+// coins per coin drawn -- since identify time (1/coin, fixed) is what
+// actually costs real time, this minimizes expected time far better than
+// a single fixed lot choice, and automatically adapts as the target set
+// changes (e.g. --exclude-rarity) or as groups get filled in and the
+// remaining gaps shift to a different lot's sweet spot (a handful of
+// stragglers in the thin decimal runs favor Check Your Change or Decimal
+// Charity Bag late-game even though Estate Sale Hoard dominates early).
+function chooseLot(cash, missingSet) {
+  let best = null;
+  let bestYield = -1;
+  LOTS.forEach((lot) => {
+    if (cash < lot.baseCost) return;
+    const y = expectedNewFractionPerDraw(lot, missingSet);
+    if (y > bestYield) {
+      bestYield = y;
+      best = lot;
+    }
+  });
+  return best;
+}
 
 function drawCoinsFromLot(lot) {
   const { pool, guaranteedPool } = lotPools[lot.id];
@@ -77,42 +131,39 @@ function rollGradeMult() {
   return GRADES[GRADES.length - 1].mult;
 }
 
-// Strategy: take the free starting tray, bootstrap on Decimal Charity Bag
-// until Estate Sale Hoard is affordable, then buy Estate Sale Hoard
-// exclusively -- it's the only lot whose typeWeights span every penny
-// group, and (per its guaranteed Rare+ slot) gives the best odds of any
-// lot at each of the three Legendary key dates that gate completion.
-// Duplicates are sold immediately at the base 60% dealer cut to fund the
-// next buy; cash is never actually the constraint once Estate Hoard is
-// reachable (see README note below).
-const BOOTSTRAP_LOT = "decimal_bag";
-const MAIN_LOT = "estate_hoard";
-
-function simulateOneRun() {
+// Strategy: take the free starting tray, then on each purchase greedily
+// buy whichever affordable lot's expected still-needed-coins-per-draw is
+// highest (chooseLot above), selling every duplicate immediately at the
+// base 60% dealer cut to fund the next buy. Cash is never actually the
+// binding constraint here -- see README note below -- so this reduces to
+// "always draw from the lot best suited to whatever's still missing."
+// Ignores lot cooldowns (Check Your Change's 3s): its 5 coins take 5s to
+// identify regardless, which already exceeds the cooldown, so it's never
+// actually gating.
+function simulateOneRun(targetCoinIds) {
   let cash = 100; // pence, matches defaultState() in state.js
   const collection = new Set();
+  const missing = new Set(targetCoinIds);
   let coinsDrawn = 0;
   let lotsBought = 0;
 
   const startPool = buildLotPool(STARTING_ESTATE);
   for (let i = 0; i < 100; i++) {
-    collection.add(weightedPick(startPool));
+    const coinId = weightedPick(startPool);
+    collection.add(coinId);
+    missing.delete(coinId);
     coinsDrawn++;
   }
 
-  while (collection.size < ALL_COIN_IDS.length) {
-    let lotId;
-    if (cash >= LOTS_BY_ID[MAIN_LOT].baseCost) lotId = MAIN_LOT;
-    else if (cash >= LOTS_BY_ID[BOOTSTRAP_LOT].baseCost) lotId = BOOTSTRAP_LOT;
-    else lotId = "check_change"; // free; ignores its 3s cooldown, negligible next to identify time
-
-    const lot = LOTS_BY_ID[lotId];
+  while (missing.size > 0) {
+    const lot = chooseLot(cash, missing);
     cash -= lot.baseCost;
     lotsBought++;
     drawCoinsFromLot(lot).forEach((coinId) => {
       coinsDrawn++;
       if (!collection.has(coinId)) {
         collection.add(coinId);
+        missing.delete(coinId);
       } else {
         const value = COINS_BY_ID[coinId].value * rollGradeMult();
         cash += Math.max(1, Math.round(value * 0.6));
@@ -135,16 +186,20 @@ function formatTime(sec) {
 }
 
 function main() {
-  const nTrials = process.argv[2] ? parseInt(process.argv[2], 10) : 500;
+  const argv = process.argv.slice(2);
+  const nTrials = argv[0] && !argv[0].startsWith("--") ? parseInt(argv[0], 10) : 500;
   const results = [];
-  for (let i = 0; i < nTrials; i++) results.push(simulateOneRun());
+  for (let i = 0; i < nTrials; i++) results.push(simulateOneRun(TARGET_COIN_IDS));
 
   const draws = results.map((r) => r.coinsDrawn).sort((a, b) => a - b);
   const mean = draws.reduce((a, b) => a + b, 0) / draws.length;
 
   console.log(`Trials: ${nTrials}`);
-  console.log(`Catalog size: ${ALL_COIN_IDS.length} coins`);
-  console.log(`\nCoins identified to complete the full collection (1/sec bottleneck):`);
+  console.log(`Catalog size: ${COINS.length} coins` +
+    (EXCLUDED_RARITIES.length
+      ? ` (target excludes ${EXCLUDED_RARITIES.join(", ")}: ${COINS.length - TARGET_COIN_IDS.length} coins dropped, ${TARGET_COIN_IDS.length} required)`
+      : ` (${TARGET_COIN_IDS.length} required)`));
+  console.log(`\nCoins identified to complete the target collection (1/sec bottleneck):`);
   console.log(`  min=${draws[0]}  p10=${percentile(draws, 0.1)}  median=${percentile(draws, 0.5)}  ` +
     `mean=${mean.toFixed(0)}  p90=${percentile(draws, 0.9)}  max=${draws[draws.length - 1]}`);
 
