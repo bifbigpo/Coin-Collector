@@ -261,6 +261,7 @@ function cancelGrading(uid) {
   entry.grading = false;
   entry.inGradeTray = false;
   entry.gradeRemainingMs = 0;
+  entry.autoGradeSkip = true; // the Bench Assistant won't put it straight back
   if (wasActive) startNextGrading();
   saveState();
 }
@@ -283,6 +284,52 @@ function processGradingTray() {
     }
   }
   if (startNextGrading()) didWork = true;
+  return didWork;
+}
+
+// Bench Assistant: seconds between automatic moves into the grade tray, per
+// upgrade level (index 0 = not owned).
+var AUTO_GRADE_INTERVAL_MS = [0, 8000, 5000, 3000];
+
+function autoGradeIntervalMs() {
+  return AUTO_GRADE_INTERVAL_MS[getLevel("auto_grade")] || 0;
+}
+
+// The next coin the assistant would pick up: the first identified,
+// not-yet-graded coin in inspection tray order (so it follows whatever
+// sort the player last applied). Coins the player pulled back out of the
+// grade tray by hand are left alone.
+function nextAutoGradeCandidate() {
+  return state.tray.find(function (e) {
+    return e.identified && !e.inGradeTray && !isCoinGraded(e) && !e.autoGradeSkip;
+  });
+}
+
+// Counts down the Bench Assistant's timer; once it's due, moves one coin
+// into the grade tray as soon as there's both a free slot and a coin to
+// move, then starts the next countdown. The timer holds at zero while
+// waiting, so a freed slot is filled straight away.
+function processAutoGrading() {
+  var interval = autoGradeIntervalMs();
+  if (!interval) return false;
+  if (state.autoGradeRemainingMs === undefined || state.autoGradeRemainingMs > interval) {
+    state.autoGradeRemainingMs = interval;
+  }
+  var didWork = false;
+  if (state.autoGradeRemainingMs > 0) {
+    state.autoGradeRemainingMs = Math.max(0, state.autoGradeRemainingMs - TICK_MS);
+    didWork = true;
+  }
+  if (state.autoGradeRemainingMs === 0 && gradingTraySpaceRemaining() > 0) {
+    var entry = nextAutoGradeCandidate();
+    if (entry) {
+      entry.inGradeTray = true;
+      entry.selected = false;
+      startNextGrading();
+      state.autoGradeRemainingMs = interval;
+      didWork = true;
+    }
+  }
   return didWork;
 }
 
@@ -712,6 +759,7 @@ function tick() {
 
   if (processIdentification()) changed = true;
   if (processGradingTray()) changed = true;
+  if (processAutoGrading()) changed = true;
 
   var messageCountBefore = state.deliveredMessages.length;
   checkMessageTriggers();
