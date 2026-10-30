@@ -54,6 +54,7 @@ function defaultState() {
     tray: startingTray, // { uid, coinId, identified, identifying, remainingMs, totalMs, grading, gradeRemainingMs, graded, trueGrade, gradeCap }
     nextUid: startingTray.length + 1,
     lotCooldowns: {}, // lotId -> ms remaining
+    autoGradeRemainingMs: 0, // Bench Assistant countdown to its next move into the grade tray
     gradingXp: 0, // experience toward the grading skill (SKILL_TIERS in engine.js)
     stats: {
       lotsBought: 0,

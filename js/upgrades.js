@@ -22,6 +22,14 @@ var UPGRADES = [
     costStep: 200
   },
   {
+    id: "auto_grade",
+    name: "Bench Assistant",
+    blurb: "An apprentice who keeps the grade tray fed. Automatically moves the next ungraded coin from the inspection tray to the grade tray whenever there's room -- every 8s, then 5s, then 3s per level.",
+    type: "leveled",
+    maxLevel: 3,
+    costs: [500, 2000, 3000]
+  },
+  {
     id: "fair_market_appraisal",
     name: "Fair Market Appraisal",
     blurb: "Stop leaving money on the table. Sell coins for 85% of their true value instead of a dealer's usual 60% cut.",
@@ -43,6 +51,9 @@ UPGRADES.forEach(function (u) { UPGRADES_BY_ID[u.id] = u; });
 
 function upgradeCost(def, currentLevel) {
   if (def.type === "toggle") return def.baseCost;
+  // costs lists an explicit price per level (e.g. Bench Assistant: £5,
+  // £20, £30) for upgrades too short to bother with a curve.
+  if (def.costs) return def.costs[currentLevel];
   // costStep grows the price by a flat amount each level (e.g. Practiced
   // Hands: £2, £4, £6, ...); costMult grows it geometrically instead.
   if (def.costStep !== undefined) return def.baseCost + def.costStep * currentLevel;

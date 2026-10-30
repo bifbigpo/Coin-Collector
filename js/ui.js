@@ -308,6 +308,15 @@ function renderGradingTray() {
   var capacity = gradingTrayCapacity();
   count.textContent = occupants.length + " / " + capacity;
 
+  var autoStatus = document.getElementById("auto-grade-status");
+  if (autoStatus) {
+    var autoInterval = autoGradeIntervalMs();
+    if (!autoInterval) autoStatus.textContent = "";
+    else if (occupants.length >= capacity) autoStatus.textContent = "Bench Assistant: waiting for a free slot";
+    else if (!nextAutoGradeCandidate()) autoStatus.textContent = "Bench Assistant: nothing to grade";
+    else autoStatus.textContent = "Bench Assistant: next coin in " + Math.ceil((state.autoGradeRemainingMs || 0) / 1000) + "s";
+  }
+
   for (var i = 0; i < capacity; i++) {
     var el = document.createElement("div");
     var entry = occupants[i];
