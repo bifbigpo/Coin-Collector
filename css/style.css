@@ -659,3 +659,22 @@ h2 {
   .messages-body { grid-template-columns: 1fr; }
   .messages-list { border-right: none; border-bottom: 1px solid var(--border); max-height: 160px; }
 }
+
+/* Mobile header: stack the Reset button directly beneath the Messages button
+   instead of leaving it on the same row (where it gets pushed off-screen). */
+@media (max-width: 640px) {
+  .header-right {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "cash  messages"
+      "stats reset";
+    column-gap: 12px;
+    row-gap: 6px;
+    align-items: center;
+  }
+  .header-right .cash-display { grid-area: cash; }
+  .header-right .stat-line { grid-area: stats; }
+  .header-right .messages-btn { grid-area: messages; }
+  .header-right [data-action="reset-save"] { grid-area: reset; align-self: start; }
+}
