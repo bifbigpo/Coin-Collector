@@ -141,12 +141,20 @@ function renderHeader() {
   var skillLevel = gradingSkillLevel();
   var xp = state.gradingXp || 0;
   var nextTier = SKILL_TIERS[skillLevel + 1];
-  var skillPart = " · grading skill " + (skillLevel + 1) + "/" + SKILL_TIERS.length +
-    (nextTier ? " (" + xp + "/" + nextTier.xp + " XP)" : " (max)");
-  document.getElementById("stat-line").textContent =
-    owned + " / " + COINS.length + " coins collected · " + groups + " / " + totalGroups + " sets complete · " +
-    "collection value " + formatMoney(totalCollectionValue()) + " · " +
-    "sale value " + Math.round(sellMultiplier() * 100) + "%" + skillPart;
+  // Every figure is wrapped in <b>; the grading-skill figures also get a
+  // gradient fill keyed to the current tier (rarity colours, common ->
+  // legendary) so the readout visibly "levels up" alongside the skill.
+  var num = function (v) { return "<b>" + v + "</b>"; };
+  var skillNum = function (v) {
+    return '<b class="skill-num skill-tier-' + skillLevel + '">' + v + "</b>";
+  };
+  var skillPart = " · grading skill " + skillNum(skillLevel + 1) + "/" + skillNum(SKILL_TIERS.length) +
+    (nextTier ? " (" + skillNum(xp) + "/" + skillNum(nextTier.xp) + " XP)" : " (max)");
+  document.getElementById("stat-line").innerHTML =
+    num(owned) + " / " + num(COINS.length) + " coins collected · " +
+    num(groups) + " / " + num(totalGroups) + " sets complete · " +
+    "collection value " + num(formatMoney(totalCollectionValue())) + " · " +
+    "sale value " + num(Math.round(sellMultiplier() * 100) + "%") + skillPart;
 }
 
 function renderShop() {
@@ -154,7 +162,7 @@ function renderShop() {
   container.innerHTML = "";
   LOTS.forEach(function (lot) {
     var card = document.createElement("div");
-    card.className = "card lot-card" + (state.selectedLot === lot.id ? " selected" : "");
+    card.className = "card lot-card";
 
     var cost = lotCost(lot);
     var count = lotCoinCount(lot);
@@ -165,18 +173,11 @@ function renderShop() {
       : "Buy for " + (lot.isFree ? "Free" : formatMoney(cost));
     var buyDisabled = cooldownRemaining > 0 || full || state.cash < cost;
 
-    // The free "Check Your Change" refill has nothing to compare against
-    // other lots on, so it skips the select toggle other lots use.
-    var selectButton = lot.isFree ? "" :
-      '<button class="btn" data-action="select-lot" data-id="' + lot.id + '">' +
-      (state.selectedLot === lot.id ? "Selected" : "Select") + "</button>";
-
     card.innerHTML =
       '<div class="card-title">' + lot.name + "</div>" +
       '<div class="card-blurb">' + lot.blurb + "</div>" +
       '<div class="card-meta">' + count + " coins</div>" +
       '<div class="card-actions">' +
-      selectButton +
       '<button class="btn btn-primary" data-action="buy-lot" data-id="' + lot.id + '"' +
       (buyDisabled ? " disabled" : "") + ">" + buyLabel + "</button>" +
       "</div>";
