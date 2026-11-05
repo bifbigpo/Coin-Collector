@@ -28,6 +28,14 @@ function handleClick(e) {
 
 document.addEventListener("DOMContentLoaded", function () {
   document.body.addEventListener("click", handleClick);
+  // Non-button elements acting as buttons (selectable tray cards) respond
+  // to Enter/Space like real buttons do.
+  document.body.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (!e.target.matches('[role="button"][data-action]')) return;
+    e.preventDefault();
+    handleClick(e);
+  });
   document.addEventListener("mousedown", function () { setMouseDown(true); });
   document.addEventListener("mouseup", function () { setMouseDown(false); });
   checkMessageTriggers();

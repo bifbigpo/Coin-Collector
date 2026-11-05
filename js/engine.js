@@ -201,7 +201,7 @@ function selectedForGradingCount() {
   return state.tray.filter(function (e) { return e.selected; }).length;
 }
 
-// Ticking a coin's checkbox in the inspection tray only marks it selected
+// Clicking an ungraded coin's card in the inspection tray only marks it selected
 // -- it doesn't move yet. Selection is capped at however many grade tray
 // slots are actually free right now.
 function toggleSelectForGrading(uid) {
