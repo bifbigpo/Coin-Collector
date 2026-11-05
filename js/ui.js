@@ -43,7 +43,53 @@ function closeMessages() {
   messagesOpen = false;
 }
 
+// Which page of the game is showing (Coins / Collection / Upgrades). UI-only,
+// like the messages modal, so it lives outside `state` and is remembered in
+// its own localStorage key -- a Reset doesn't need to bounce you back.
+var TAB_KEY = "coinCollectorActiveTab";
+var TABS = ["coins", "collection", "upgrades"];
+var activeTab = "coins";
+try {
+  var savedTab = localStorage.getItem(TAB_KEY);
+  if (TABS.indexOf(savedTab) !== -1) activeTab = savedTab;
+} catch (e) {}
+
+function switchTab(id) {
+  if (TABS.indexOf(id) === -1 || id === activeTab) return;
+  activeTab = id;
+  try { localStorage.setItem(TAB_KEY, id); } catch (e) {}
+  window.scrollTo(0, 0);
+}
+
+function renderTabs() {
+  document.querySelectorAll(".tab-bar .tab").forEach(function (tab) {
+    var on = tab.getAttribute("data-id") === activeTab;
+    tab.classList.toggle("active", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  document.querySelectorAll(".view").forEach(function (view) {
+    view.hidden = view.getAttribute("data-view") !== activeTab;
+  });
+
+  var owned = COINS.filter(function (c) { return state.collection[c.id]; }).length;
+  document.getElementById("tab-collection-count").textContent = owned + "/" + COINS.length;
+
+  // Badge the Upgrades tab with how many upgrades you could buy right now,
+  // so moving them off the main page doesn't hide that one is affordable.
+  var affordable = UPGRADES.filter(function (def) {
+    if (def.type === "toggle") {
+      return !isOwned(def.id) && !(def.requires && !isOwned(def.requires)) && state.cash >= def.baseCost;
+    }
+    var level = getLevel(def.id);
+    return level < def.maxLevel && state.cash >= upgradeCost(def, level);
+  }).length;
+  var badge = document.getElementById("tab-upgrades-badge");
+  badge.hidden = affordable === 0;
+  badge.textContent = affordable;
+}
+
 function renderAll() {
+  renderTabs();
   renderHeader();
   renderShop();
   renderUpgrades();

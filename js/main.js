@@ -21,6 +21,7 @@ function handleClick(e) {
     case "toggle-messages": toggleMessages(); break;
     case "close-messages": closeMessages(); break;
     case "read-message": openMessage(id); break;
+    case "switch-tab": switchTab(id); break;
   }
   renderAll();
 }
