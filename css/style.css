@@ -154,17 +154,31 @@ h2 {
 .stat-line .skill-tier-2 { background-image: linear-gradient(90deg, var(--c-rare), var(--c-veryrare)); }
 .stat-line .skill-tier-3 { background-image: linear-gradient(90deg, var(--c-veryrare), var(--c-legendary)); }
 
+/* Coins page: a narrow Buy Coins menu on the left, trays get the other
+   two-thirds. Stays side by side down to tablet width so the shop
+   doesn't jump above the trays. */
 .layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
   gap: 16px;
   padding: 16px;
   align-items: start;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 640px) {
   .layout { grid-template-columns: 1fr; }
 }
+
+/* Compact lot cards so the left menu reads as a menu, not a column of
+   full-size cards. */
+.panel.shop-panel { padding: 10px; }
+.shop-panel h2 { margin-top: 4px; }
+.shop-panel .card-list { gap: 6px; }
+.card.lot-card { padding: 8px 10px; }
+.lot-card .card-title { font-size: 0.85rem; }
+.lot-card .card-blurb { font-size: 0.75rem; }
+.lot-card .card-meta { font-size: 0.72rem; }
+.lot-card .btn { padding: 4px 8px; font-size: 0.8rem; }
 
 .panel {
   background: var(--panel);
