@@ -21,12 +21,21 @@ function handleClick(e) {
     case "toggle-messages": toggleMessages(); break;
     case "close-messages": closeMessages(); break;
     case "read-message": openMessage(id); break;
+    case "switch-tab": switchTab(id); break;
   }
   renderAll();
 }
 
 document.addEventListener("DOMContentLoaded", function () {
   document.body.addEventListener("click", handleClick);
+  // Non-button elements acting as buttons (selectable tray cards) respond
+  // to Enter/Space like real buttons do.
+  document.body.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (!e.target.matches('[role="button"][data-action]')) return;
+    e.preventDefault();
+    handleClick(e);
+  });
   document.addEventListener("mousedown", function () { setMouseDown(true); });
   document.addEventListener("mouseup", function () { setMouseDown(false); });
   checkMessageTriggers();

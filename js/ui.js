@@ -43,7 +43,53 @@ function closeMessages() {
   messagesOpen = false;
 }
 
+// Which page of the game is showing (Coins / Collection / Upgrades). UI-only,
+// like the messages modal, so it lives outside `state` and is remembered in
+// its own localStorage key -- a Reset doesn't need to bounce you back.
+var TAB_KEY = "coinCollectorActiveTab";
+var TABS = ["coins", "collection", "upgrades"];
+var activeTab = "coins";
+try {
+  var savedTab = localStorage.getItem(TAB_KEY);
+  if (TABS.indexOf(savedTab) !== -1) activeTab = savedTab;
+} catch (e) {}
+
+function switchTab(id) {
+  if (TABS.indexOf(id) === -1 || id === activeTab) return;
+  activeTab = id;
+  try { localStorage.setItem(TAB_KEY, id); } catch (e) {}
+  window.scrollTo(0, 0);
+}
+
+function renderTabs() {
+  document.querySelectorAll(".tab-bar .tab").forEach(function (tab) {
+    var on = tab.getAttribute("data-id") === activeTab;
+    tab.classList.toggle("active", on);
+    tab.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  document.querySelectorAll(".view").forEach(function (view) {
+    view.hidden = view.getAttribute("data-view") !== activeTab;
+  });
+
+  var owned = COINS.filter(function (c) { return state.collection[c.id]; }).length;
+  document.getElementById("tab-collection-count").textContent = owned + "/" + COINS.length;
+
+  // Badge the Upgrades tab with how many upgrades you could buy right now,
+  // so moving them off the main page doesn't hide that one is affordable.
+  var affordable = UPGRADES.filter(function (def) {
+    if (def.type === "toggle") {
+      return !isOwned(def.id) && !(def.requires && !isOwned(def.requires)) && state.cash >= def.baseCost;
+    }
+    var level = getLevel(def.id);
+    return level < def.maxLevel && state.cash >= upgradeCost(def, level);
+  }).length;
+  var badge = document.getElementById("tab-upgrades-badge");
+  badge.hidden = affordable === 0;
+  badge.textContent = affordable;
+}
+
 function renderAll() {
+  renderTabs();
   renderHeader();
   renderShop();
   renderUpgrades();
@@ -264,21 +310,33 @@ function renderTray() {
       var isUpgrade = owned && graded && coinIsUpgrade(entry);
       var sellValue = coinSellValue(entry);
       var suggestedValue = coinSuggestedValue(entry);
-      var checkboxDisabled = !entry.selected && !canSelectMore;
-      var gradeCheckbox = !graded
-        ? '<label class="grade-check' + (checkboxDisabled ? " disabled" : "") + '">' +
-          '<input type="checkbox" data-action="toggle-select-grading" data-uid="' + entry.uid + '"' +
-          (entry.selected ? " checked" : "") + (checkboxDisabled ? " disabled" : "") + '> Select for grading' +
-          '</label>'
-        : "";
-      el.className = "coin-slot identified rarity-" + coin.rarity;
+      // Ungraded coins: the whole card is the selection toggle (clicks on
+      // its own Keep/Sell buttons still hit those buttons first, since the
+      // delegated handler takes the closest data-action).
+      var selectable = !graded;
+      var selectLocked = selectable && !entry.selected && !canSelectMore;
+      var selectHint = !selectable ? ""
+        : entry.selected ? '<div class="select-hint">✓ Selected for grading</div>'
+        : selectLocked ? '<div class="select-hint">Grade tray full</div>'
+        : '<div class="select-hint">Click to select for grading</div>';
+      el.className = "coin-slot identified rarity-" + coin.rarity +
+        (selectable ? " selectable" : "") +
+        (entry.selected ? " selected" : "") +
+        (selectLocked ? " select-locked" : "");
+      if (selectable) {
+        el.setAttribute("data-action", "toggle-select-grading");
+        el.setAttribute("data-uid", entry.uid);
+        el.setAttribute("role", "button");
+        el.setAttribute("tabindex", selectLocked ? "-1" : "0");
+        el.setAttribute("aria-pressed", entry.selected ? "true" : "false");
+      }
       el.innerHTML =
         '<div class="coin-face">' + pixelCoinImgHTML(coin, graded ? entry.trueGrade : null, "pixel-coin-lg") + '</div>' +
         '<div class="coin-name">' + coin.name + '</div>' +
         '<div class="coin-label">' + coin.subtitle + '</div>' +
         '<div class="coin-rarity">' + RARITY[coin.rarity].label + (owned ? " · Duplicate" : " · Needed") + '</div>' +
         '<div class="coin-grade' + (graded ? "" : " coin-grade-unknown") + '">' + gradeDisplayHTML(entry) + '</div>' +
-        gradeCheckbox +
+        selectHint +
         '<div class="coin-actions">' +
         (!owned && graded ? '<button class="btn btn-small" data-action="keep-coin" data-uid="' + entry.uid + '">Keep</button>' : "") +
         (isUpgrade ? '<button class="btn btn-small btn-primary" data-action="replace-coin" data-uid="' + entry.uid + '">Replace</button>' : "") +

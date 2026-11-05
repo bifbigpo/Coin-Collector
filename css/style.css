@@ -52,9 +52,65 @@ h2 {
   padding: 14px 24px;
   background: var(--panel);
   border-bottom: 1px solid var(--border);
+}
+
+/* Header + tab menu stick together so the stats line and page switcher
+   are always in reach. */
+.top-bar {
   position: sticky;
   top: 0;
   z-index: 10;
+}
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tab {
+  font: inherit;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 16px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.tab-count {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.view[hidden] { display: none; }
+
+.view-single {
+  padding: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.view-single .panel > h2:first-child { margin-top: 4px; }
+
+.card-list.upgrade-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  align-items: start;
 }
 
 .header-left h1 { font-size: 1.3rem; }
@@ -98,17 +154,31 @@ h2 {
 .stat-line .skill-tier-2 { background-image: linear-gradient(90deg, var(--c-rare), var(--c-veryrare)); }
 .stat-line .skill-tier-3 { background-image: linear-gradient(90deg, var(--c-veryrare), var(--c-legendary)); }
 
+/* Coins page: a narrow Buy Coins menu on the left, trays get the other
+   two-thirds. Stays side by side down to tablet width so the shop
+   doesn't jump above the trays. */
 .layout {
   display: grid;
-  grid-template-columns: 300px 1fr 320px;
+  grid-template-columns: minmax(200px, 1fr) minmax(0, 2fr);
   gap: 16px;
   padding: 16px;
   align-items: start;
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 640px) {
   .layout { grid-template-columns: 1fr; }
 }
+
+/* Compact lot cards so the left menu reads as a menu, not a column of
+   full-size cards. */
+.panel.shop-panel { padding: 10px; }
+.shop-panel h2 { margin-top: 4px; }
+.shop-panel .card-list { gap: 6px; }
+.card.lot-card { padding: 8px 10px; }
+.lot-card .card-title { font-size: 0.85rem; }
+.lot-card .card-blurb { font-size: 0.75rem; }
+.lot-card .card-meta { font-size: 0.72rem; }
+.lot-card .btn { padding: 4px 8px; font-size: 0.8rem; }
 
 .panel {
   background: var(--panel);
@@ -376,18 +446,31 @@ h2 {
   margin-top: 4px;
 }
 
-.grade-check {
-  display: flex;
-  align-items: center;
-  gap: 5px;
+/* Ungraded inspection-tray cards are clickable as a whole to select them
+   for grading; selected ones take the gold accent. */
+.coin-slot.selectable {
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s, background 0.12s;
+}
+.coin-slot.selectable:hover { border-color: var(--accent-dim); }
+.coin-slot.selectable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.coin-slot.selected {
+  border-color: var(--accent);
+  background: linear-gradient(rgba(212,175,55,0.12), rgba(212,175,55,0.04)), var(--card);
+  box-shadow: 0 0 0 1px var(--accent), 0 0 12px rgba(212,175,55,0.35);
+}
+.coin-slot.selected:hover { border-color: var(--accent); }
+.coin-slot.select-locked { cursor: not-allowed; }
+.coin-slot.select-locked:hover { border-color: var(--border); }
+
+.select-hint {
   font-size: 0.72rem;
   color: var(--text-dim);
-  cursor: pointer;
 }
+.coin-slot.selected .select-hint { color: var(--accent); font-weight: 600; }
 
-.grade-check.disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+@media (prefers-reduced-motion: reduce) {
+  .coin-slot.selectable { transition: none; }
 }
 
 .inspection-tray-header {
@@ -673,6 +756,11 @@ h2 {
 @media (max-width: 640px) {
   .messages-body { grid-template-columns: 1fr; }
   .messages-list { border-right: none; border-bottom: 1px solid var(--border); max-height: 160px; }
+}
+
+@media (max-width: 640px) {
+  .tab-bar { padding: 0 8px; }
+  .tab { padding: 10px 10px 8px; }
 }
 
 /* Mobile header: stack the Reset button directly beneath the Messages button
