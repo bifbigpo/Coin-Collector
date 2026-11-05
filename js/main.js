@@ -7,7 +7,6 @@ function handleClick(e) {
 
   switch (action) {
     case "buy-lot": buyLot(id); break;
-    case "select-lot": state.selectedLot = id; saveState(); break;
     case "buy-upgrade": buyUpgrade(id); break;
     case "keep-coin": keepCoin(uid); break;
     case "replace-coin": replaceCoin(uid); break;
