@@ -232,6 +232,61 @@ var MESSAGES = [
       "It's a strange kind of rarity: not because the coin is old or forgotten, but because it was deliberately kept out of everyone's pocket from the day it was struck.",
       "The year decimal Britain took a breather from making pennies."
     ]
+  },
+  {
+    id: "farthing_album_letter",
+    from: "Grandpa Alfred",
+    subject: "The Farthing Tin",
+    // Delivered the moment the Farthing Collection Book is bought.
+    trigger: function () { return isOwned("farthing_album"); },
+    body: [
+      "So you've gone and bought yourself a farthing album. Good. I was hoping you might.",
+      "A farthing was a quarter of a penny -- the smallest coin there was. Even when I was a lad you couldn't buy much with one, and by the time they stopped making them in 1956 most people didn't bother picking them up off the pavement. They stopped being money at all at the end of 1960.",
+      "I never could throw them away, mind. There's an old tobacco tin of them on the top shelf of the wardrobe -- mostly the little wren ones from the war years and after. It's yours. Start there.",
+      "The older ones are harder going. Victoria's farthings wear down to almost nothing, and from 1897 the Mint darkened them on purpose, so a shiny new one couldn't be passed off as a half sovereign. Don't mistake that dark finish for dirt.",
+      "There aren't many real rarities among them, which makes a full run a kinder job than the pennies. Watch out for 1863, and for the 1895 farthings that still carry the old Bun Head.",
+      "-- Grandpa Alfred"
+    ]
+  },
+  {
+    id: "coin_farthing_victoria_bun_1863",
+    subject: "The 1863 Farthing",
+    kind: "discovery",
+    eyebrow: "Rare Coin Discovered",
+    trigger: function () { return PROOFREAD_ALL_DISCOVERY_MESSAGES || hasSeenCoin("farthing_victoria_bun_1863"); },
+    body: [
+      "You've found an 1863 farthing -- the key date of the bronze Bun Head farthings.",
+      "Bronze had only replaced copper three years earlier, and the Bun Head farthing went on to be struck almost every year until 1895. Among all those dates, collectors single out 1863 as the scarce one.",
+      "Most bronze farthings survive in quantity simply because nobody thought them worth melting or hoarding. 1863 is the date that didn't turn up in the same numbers.",
+      "The scarcest date in the Bun Head farthing run."
+    ]
+  },
+  {
+    id: "coin_farthing_victoria_bun_1895",
+    subject: "The 1895 Bun Head Farthing",
+    kind: "discovery",
+    eyebrow: "Rare Coin Discovered",
+    trigger: function () { return PROOFREAD_ALL_DISCOVERY_MESSAGES || hasSeenCoin("farthing_victoria_bun_1895"); },
+    body: [
+      "You've found an 1895 farthing with the Bun Head portrait -- the last year it was used.",
+      "1895 was the year Victoria's portrait changed. The young Bun Head, in use since 1860, gave way to the older Veiled Head, and farthings of both designs carry the same date.",
+      "Collectors rate the Bun Head version as the scarcer of the two -- it was, after all, on its way out.",
+      "Same year, same coin, two different queens -- and this is the harder of the two to find."
+    ]
+  },
+  {
+    id: "coin_farthing_edward_viii_1937",
+    subject: "The Edward VIII Farthing",
+    kind: "discovery",
+    eyebrow: "Rare Coin Discovered",
+    trigger: function () { return PROOFREAD_ALL_DISCOVERY_MESSAGES || hasSeenCoin("farthing_edward_viii_1937"); },
+    body: [
+      "You've found a 1937 farthing bearing the portrait of Edward VIII -- a king whose coins were never issued.",
+      "Edward VIII came to the throne in January 1936 and abdicated that December, before his coinage could be released. The Royal Mint had already prepared designs and struck pattern pieces for 1937.",
+      "His farthing introduced a new reverse: a tiny wren in place of Britannia. The design was never issued under Edward, but it went on to appear on the farthings of George VI and Elizabeth II until the last one in 1956.",
+      "Collectors class it as a pattern rather than a circulating coin, and it is excessively rare.",
+      "The farthing of a king who never had one."
+    ]
   }
 ];
 

@@ -8,8 +8,12 @@
 // buildLotPool weighting) so results track the actual game data -- no
 // separate data file to keep in sync.
 //
-// Usage: node tools/simulate-collection-time.js [trials] [--exclude-rarity=Rarity,...]
+// Usage: node tools/simulate-collection-time.js [trials] [--denom=penny|farthing] [--exclude-rarity=Rarity,...]
 //   trials defaults to 500.
+//   --denom picks which album to complete (default penny). Only that
+//   denomination's lots are bought, since lots never mix denominations;
+//   penny runs open with the free starting jar, other albums with their
+//   own free one-time lot (e.g. Grandpa's Farthing Tin).
 //   --exclude-rarity drops matching coins from the completion target
 //   entirely (they're still drawable and sellable, just not required) --
 //   e.g. --exclude-rarity=Legendary to ask "how long without the 3
@@ -35,8 +39,21 @@ function parseExcludeRarity(argv) {
   if (!flag) return [];
   return flag.slice("--exclude-rarity=".length).split(",").filter(Boolean);
 }
+function parseDenom(argv) {
+  const flag = argv.find((a) => a.startsWith("--denom="));
+  return flag ? flag.slice("--denom=".length) : "penny";
+}
 const EXCLUDED_RARITIES = parseExcludeRarity(process.argv.slice(2));
-const TARGET_COIN_IDS = COINS.filter((c) => EXCLUDED_RARITIES.indexOf(c.rarity) === -1).map((c) => c.id);
+const DENOM = parseDenom(process.argv.slice(2));
+const DENOM_COINS = COINS.filter((c) => c.denom === DENOM);
+if (!DENOM_COINS.length) {
+  console.error(`Unknown denomination "${DENOM}".`);
+  process.exit(1);
+}
+const TARGET_COIN_IDS = DENOM_COINS.filter((c) => EXCLUDED_RARITIES.indexOf(c.rarity) === -1).map((c) => c.id);
+// Purchasable lots for this album; a free one-time lot is the opening tray instead.
+const DENOM_LOTS = LOTS.filter((l) => l.denom === DENOM && !l.oneTime);
+const OPENING_LOT = DENOM === "penny" ? null : LOTS.find((l) => l.denom === DENOM && l.oneTime);
 
 function weightedPick(pool) {
   const entries = Object.keys(pool);
@@ -50,6 +67,7 @@ function weightedPick(pool) {
 }
 
 // Pools depend only on the fixed catalog, so build each lot's once.
+const STARTING_POOL = buildLotPool(STARTING_ESTATE);
 const lotPools = {};
 LOTS.forEach((lot) => {
   const pool = buildLotPool(lot);
@@ -90,7 +108,7 @@ function expectedNewFractionPerDraw(lot, missingSet) {
 function chooseLot(cash, missingSet) {
   let best = null;
   let bestYield = -1;
-  LOTS.forEach((lot) => {
+  DENOM_LOTS.forEach((lot) => {
     if (cash < lot.baseCost) return;
     const y = expectedNewFractionPerDraw(lot, missingSet);
     if (y > bestYield) {
@@ -141,23 +159,30 @@ function rollGradeMult() {
 // identify regardless, which already exceeds the cooldown, so it's never
 // actually gating.
 function simulateOneRun(targetCoinIds) {
-  let cash = 100; // pence, matches defaultState() in state.js
+  // pence, matches defaultState() in state.js. Other albums are unlocked
+  // mid-game and bankrolled by the penny side, so their cash isn't
+  // modeled: every lot counts as affordable.
+  let cash = DENOM === "penny" ? 100 : Infinity;
   const collection = new Set();
   const missing = new Set(targetCoinIds);
   let coinsDrawn = 0;
   let lotsBought = 0;
+  let spent = 0;
+  let earned = 0;
 
-  const startPool = buildLotPool(STARTING_ESTATE);
-  for (let i = 0; i < 100; i++) {
-    const coinId = weightedPick(startPool);
+  const opening = OPENING_LOT
+    ? drawCoinsFromLot(OPENING_LOT)
+    : Array.from({ length: 100 }, () => weightedPick(STARTING_POOL));
+  opening.forEach((coinId) => {
     collection.add(coinId);
     missing.delete(coinId);
     coinsDrawn++;
-  }
+  });
 
   while (missing.size > 0) {
     const lot = chooseLot(cash, missing);
     cash -= lot.baseCost;
+    spent += lot.baseCost;
     lotsBought++;
     drawCoinsFromLot(lot).forEach((coinId) => {
       coinsDrawn++;
@@ -166,12 +191,14 @@ function simulateOneRun(targetCoinIds) {
         missing.delete(coinId);
       } else {
         const value = COINS_BY_ID[coinId].value * rollGradeMult();
-        cash += Math.max(1, Math.round(value * 0.6));
+        const sale = Math.max(1, Math.round(value * 0.6));
+        cash += sale;
+        earned += sale;
       }
     });
   }
 
-  return { coinsDrawn, lotsBought };
+  return { coinsDrawn, lotsBought, spent, earned };
 }
 
 function percentile(sortedArr, p) {
@@ -195,13 +222,17 @@ function main() {
   const mean = draws.reduce((a, b) => a + b, 0) / draws.length;
 
   console.log(`Trials: ${nTrials}`);
-  console.log(`Catalog size: ${COINS.length} coins` +
+  console.log(`Album: ${DENOM}, ${DENOM_COINS.length} coins` +
     (EXCLUDED_RARITIES.length
-      ? ` (target excludes ${EXCLUDED_RARITIES.join(", ")}: ${COINS.length - TARGET_COIN_IDS.length} coins dropped, ${TARGET_COIN_IDS.length} required)`
+      ? ` (target excludes ${EXCLUDED_RARITIES.join(", ")}: ${DENOM_COINS.length - TARGET_COIN_IDS.length} coins dropped, ${TARGET_COIN_IDS.length} required)`
       : ` (${TARGET_COIN_IDS.length} required)`));
   console.log(`\nCoins identified to complete the target collection (1/sec bottleneck):`);
   console.log(`  min=${draws[0]}  p10=${percentile(draws, 0.1)}  median=${percentile(draws, 0.5)}  ` +
     `mean=${mean.toFixed(0)}  p90=${percentile(draws, 0.9)}  max=${draws[draws.length - 1]}`);
+
+  const avg = (k) => results.reduce((a, r) => a + r[k], 0) / results.length / 100;
+  console.log(`\nAverage spend on lots: £${avg("spent").toFixed(2)}, ` +
+    `earned back selling duplicates at 60%: £${avg("earned").toFixed(2)}`);
 
   console.log(`\nEquivalent continuous play time (tab open, ticking -- no offline progress in state.js):`);
   console.log(`  min=${formatTime(draws[0])}  p10=${formatTime(percentile(draws, 0.1))}  ` +
