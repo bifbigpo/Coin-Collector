@@ -29,11 +29,13 @@ GRADES.forEach(function (g, i) { GRADE_INDEX[g.id] = i; });
 // Poor coins are obvious enough to skip grading entirely. Each tier of
 // experience narrows that window and adds one more grade, from the bottom
 // up, that's obvious at a glance -- so less and less needs a manual check.
+// Thresholds were raised 50% (from 25/75/200, rounded) so the skill builds
+// more slowly.
 var SKILL_TIERS = [
   { xp: 0, radius: 3, autoSpotCount: 1 },
-  { xp: 25, radius: 2, autoSpotCount: 2 },
-  { xp: 75, radius: 1, autoSpotCount: 3 },
-  { xp: 200, radius: 0, autoSpotCount: 4 }
+  { xp: 38, radius: 2, autoSpotCount: 2 },
+  { xp: 113, radius: 1, autoSpotCount: 3 },
+  { xp: 300, radius: 0, autoSpotCount: 4 }
 ];
 var XP_PER_MANUAL_GRADE = 1;
 
