@@ -1,6 +1,6 @@
 // Procedural pixel-art coin faces. Every coin is drawn on a tiny 16x16
 // canvas from the coin's own data (group, year, rarity, grade) rather than
-// from hand-authored art, so new PENNY_TYPES entries get a face for free.
+// from hand-authored art, so new COIN_TYPES entries get a face for free.
 // Results are cached by their inputs since the same coin/grade combination
 // always renders identically.
 
@@ -72,7 +72,7 @@ function bustSilhouette() {
 // What actually varies between real penny types is the headwear -- Victoria
 // alone has a "Bun Head" and a "Veiled Head" -- so that's what distinguishes
 // the pixel portraits too: one hand-drawn crown/veil/wreath silhouette per
-// PENNY_TYPES group, layered onto the shared bust.
+// COIN_TYPES group (or artGroup), layered onto the shared bust.
 var HEADWEAR_BY_GROUP = {
   victoria_bun:       [[5,5],[6,5],[5,6],[6,6]],
   victoria_veiled:    [[7,2],[8,2],[9,2],[6,3],[10,3],[5,4],[5,5],[5,6],[5,7]],
@@ -83,12 +83,16 @@ var HEADWEAR_BY_GROUP = {
   eii_decimal_new:    [[6,3],[7,2],[8,2],[9,2],[10,2],[11,3]],
   eii_decimal_bronze: [[6,2],[7,1],[8,1],[9,1],[10,1],[11,2]],
   eii_decimal_steel:  [[6,3],[7,3],[8,2],[9,3],[10,3]],
-  charles_iii:        [[5,4],[4,5],[5,6],[10,3],[11,4]]
+  charles_iii:        [[5,4],[4,5],[5,6],[10,3],[11,4]],
+  // Farthing types mostly borrow their monarch's penny portrait through
+  // `artGroup` (coins.js); Edward VIII has no penny, so he gets his own
+  // bare-headed side parting.
+  farthing_edward_viii: [[7,3],[8,3],[9,3],[6,4]]
 };
 var HEADWEAR_FALLBACK_LIST = Object.keys(HEADWEAR_BY_GROUP).map(function (k) { return HEADWEAR_BY_GROUP[k]; });
 
 // Falls back to a deterministic pick from the curated set above for any
-// group not in the hand-drawn list, so new PENNY_TYPES entries still render.
+// group not in the hand-drawn list, so new COIN_TYPES entries still render.
 function headwearPixels(groupId) {
   if (HEADWEAR_BY_GROUP[groupId]) return HEADWEAR_BY_GROUP[groupId];
   return HEADWEAR_FALLBACK_LIST[hashString(groupId) % HEADWEAR_FALLBACK_LIST.length];
@@ -111,12 +115,18 @@ function groupDetailPixels(groupId) {
 // It's still a steel core, but what you actually see is the copper plating,
 // so post-1992 coins get their own (brighter, pinker) copper tone rather
 // than the grey/silver a bare steel coin would have.
+//
+// Farthings struck 1897-1917 were given an artificially darkened finish at
+// the Mint, so a bright new one couldn't be mistaken for a half sovereign
+// -- they get their own darker bronze.
 function coinMaterial(coin) {
+  if (coin.denom === "farthing" && coin.year >= 1897 && coin.year <= 1917) return "bronze_dark";
   return coin.year >= 1992 ? "copper_plated" : "bronze";
 }
 
 var MATERIAL_COLORS = {
   bronze:        { face: [178, 98, 40], rim: [110, 58, 22], shade: [90, 46, 16], accent: [222, 176, 96], shine: [232, 175, 110] },
+  bronze_dark:   { face: [112, 66, 36], rim: [70, 40, 20], shade: [54, 30, 14], accent: [176, 132, 80], shine: [168, 124, 88] },
   copper_plated: { face: [200, 112, 58], rim: [130, 70, 30], shade: [100, 54, 24], accent: [236, 160, 96], shine: [250, 190, 130] }
 };
 
@@ -161,7 +171,7 @@ function pixelCoinDataUrl(coin, gradeId) {
   var ctx = canvas.getContext("2d");
 
   var mat = MATERIAL_COLORS[coinMaterial(coin)];
-  var layers = groupDetailPixels(coin.group);
+  var layers = groupDetailPixels(coin.artGroup || coin.group);
   var bust = layers.bust, headwear = layers.headwear;
   var quality = gradeQuality01(gradeId);
   var wearRand = mulberry32(hashString(coin.id + "|" + (gradeId || "u")));
@@ -224,5 +234,6 @@ function pixelCoinDataUrl(coin, gradeId) {
 
 function pixelCoinImgHTML(coin, gradeId, sizeClass) {
   var url = pixelCoinDataUrl(coin, gradeId);
-  return '<img class="pixel-coin ' + (sizeClass || "") + '" src="' + url + '" width="' + PIXEL_GRID + '" height="' + PIXEL_GRID + '" alt="">';
+  var denomClass = coin.denom && coin.denom !== "penny" ? " pixel-coin-" + coin.denom : "";
+  return '<img class="pixel-coin ' + (sizeClass || "") + denomClass + '" src="' + url + '" width="' + PIXEL_GRID + '" height="' + PIXEL_GRID + '" alt="">';
 }

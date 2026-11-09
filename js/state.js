@@ -64,7 +64,8 @@ function defaultState() {
       cashEarnedFromSelling: 0
     },
     groupBonusesClaimed: {}, // groupId -> true
-    fullCollectionBonusClaimed: false,
+    albumBonusClaimed: {}, // denomination id -> true once that whole album has been completed
+    oneTimeLotsBought: {}, // lotId -> true for `oneTime` lots (e.g. Grandpa's Farthing Tin)
     collectionQualityBonusClaimed: {}, // groupId -> highest GRADE_INDEX tier already paid out for that type
     deliveredMessages: [], // ids of MESSAGES delivered so far, in delivery order
     readMessages: {} // messageId -> true
@@ -82,6 +83,12 @@ function loadState() {
     // shallow-merge so new fields introduced later don't break old saves
     for (var k in fresh) {
       if (loaded[k] === undefined) loaded[k] = fresh[k];
+    }
+    // Saves from before denominations tracked the one penny album with a
+    // single flag -- carry it over to the per-denomination map.
+    if (loaded.fullCollectionBonusClaimed) {
+      loaded.albumBonusClaimed.penny = true;
+      delete loaded.fullCollectionBonusClaimed;
     }
     return loaded;
   } catch (e) {

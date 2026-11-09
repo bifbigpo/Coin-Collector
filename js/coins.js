@@ -1,6 +1,7 @@
-// Coin catalog: the British penny, Victoria to date, generated year-by-year
-// from a small set of type definitions so "collect every year" is possible
-// without hand-listing every entry. Every type/date range and the key dates
+// Coin catalog: British coins by denomination -- the penny, Victoria to
+// date, and the farthing, 1860 to its last issue in 1956 -- generated
+// year-by-year from a small set of type definitions so "collect every
+// year" is possible without hand-listing every entry. Every type/date range and the key dates
 // called out below are real, documented facts (Spink and the Royal Mint's
 // own history notes). Values are in pence, for a coin in typical circulated
 // condition -- the baseline before grading is applied (see engine.js).
@@ -22,6 +23,31 @@ var RARITY = {
 // the £10 base, running down to £1 for the most common run (steel,
 // commonValue 1) and up to £200 for the rarest (Bun Head, commonValue 250);
 // types with equal commonValue (Veiled Head / Edward VII) share a tier.
+// Each denomination is its own album: its own types, lots, set bonuses and
+// a one-off album bonus for completing every coin in it. A denomination
+// with `unlockUpgrade` stays hidden (no lots, no album page) until that
+// upgrade is bought -- see isDenomUnlocked() in engine.js. Adding a new
+// denomination means adding an entry here, a <DENOM>_TYPES list tagged in
+// COIN_TYPES below, its lots in lots.js and its unlock in upgrades.js.
+var DENOMINATIONS = [
+  {
+    id: "penny",
+    label: "Pennies",
+    coinName: "Penny",
+    albumBonus: 100000, // £1000, plus the +15% sale bonus in sellMultiplier()
+    unlockUpgrade: null
+  },
+  {
+    id: "farthing",
+    label: "Farthings",
+    coinName: "Farthing",
+    albumBonus: 25000, // £250
+    unlockUpgrade: "farthing_album"
+  }
+];
+var DENOMINATIONS_BY_ID = {};
+DENOMINATIONS.forEach(function (d) { DENOMINATIONS_BY_ID[d.id] = d; });
+
 var PENNY_TYPES = [
   {
     id: "victoria_bun",
@@ -175,16 +201,125 @@ var PENNY_TYPES = [
   }
 ];
 
+// The bronze farthing, a quarter of a penny, from the 1860 switch to bronze
+// (matching where the penny run starts) to the last issue in 1956; it was
+// demonetised at the end of 1960. Far fewer key dates than the penny --
+// predecimal.com's key-date list names only 1863 and the 1895 Bun Head
+// among bronze farthings, plus the never-issued 1937 Edward VIII pattern
+// -- so it plays as a quicker, gentler second album. Ordinary-year values
+// are game estimates scaled below the matching penny types; `artGroup`
+// borrows the same monarch's penny portrait in pixelcoin.js. Set bonuses
+// follow the same commonValue-ranked idea as the pennies, but kept well
+// below them: with so few key dates, every common farthing set fills in
+// minutes (tools/simulate-collection-time.js --denom=farthing puts the
+// whole album, bar the Edward VIII pattern, at ~8 minutes of identifying).
+var FARTHING_TYPES = [
+  {
+    id: "farthing_victoria_bun",
+    artGroup: "victoria_bun",
+    label: "Victoria — Bun Head Farthing (1860–1895)",
+    subtitle: "Victoria, Bun Head",
+    yearStart: 1860,
+    // The Bun Head was still struck in 1895 alongside the new Veiled Head,
+    // so 1895 appears in both runs as two different coins.
+    yearEnd: 1895,
+    commonValue: 150,
+    firstCompleteBonus: 3000, // £30
+    keyDates: {
+      1863: { rarity: "Rare", value: 4000, name: "1863 Farthing", note: "key date" },
+      1895: { rarity: "Rare", value: 2500, name: "1895 Bun Head Farthing", note: "last year of the Bun Head" }
+    }
+  },
+  {
+    id: "farthing_victoria_veiled",
+    artGroup: "victoria_veiled",
+    label: "Victoria — Veiled Head Farthing (1895–1901)",
+    subtitle: "Victoria, Veiled Head",
+    yearStart: 1895,
+    yearEnd: 1901,
+    commonValue: 100,
+    firstCompleteBonus: 2000 // £20
+  },
+  {
+    id: "farthing_edward_vii",
+    artGroup: "edward_vii",
+    label: "Edward VII Farthing (1902–1910)",
+    subtitle: "Edward VII",
+    yearStart: 1902,
+    yearEnd: 1910,
+    commonValue: 80,
+    firstCompleteBonus: 1500 // £15
+  },
+  {
+    id: "farthing_george_v",
+    artGroup: "george_v",
+    label: "George V Farthing (1911–1936)",
+    subtitle: "George V",
+    yearStart: 1911,
+    yearEnd: 1936, // the last Britannia reverse
+    commonValue: 40,
+    firstCompleteBonus: 1000 // £10
+  },
+  {
+    // A single never-issued coin: the wren reverse was designed for
+    // Edward VIII, but he abdicated before any of his coinage was
+    // released, so his farthing exists only as an excessively rare pattern.
+    id: "farthing_edward_viii",
+    label: "Edward VIII Pattern Farthing (1937)",
+    subtitle: "Edward VIII",
+    yearStart: 1937,
+    yearEnd: 1937,
+    commonValue: 40,
+    firstCompleteBonus: 5000, // £50 -- a one-coin set, but that coin is Legendary
+    keyDates: {
+      1937: { rarity: "Legendary", value: 1500000, name: "1937 Edward VIII Farthing", note: "pattern, never issued" }
+    }
+  },
+  {
+    id: "farthing_george_vi",
+    artGroup: "george_vi",
+    label: "George VI Farthing (1937–1952)",
+    subtitle: "George VI, wren reverse",
+    yearStart: 1937, // the wren replaces Britannia on the reverse
+    yearEnd: 1952,
+    commonValue: 25,
+    firstCompleteBonus: 500 // £5
+  },
+  {
+    id: "farthing_eii",
+    artGroup: "eii_predecimal",
+    label: "Elizabeth II Farthing (1953–1956)",
+    subtitle: "Elizabeth II, wren reverse",
+    yearStart: 1953,
+    yearEnd: 1956, // the last farthing ever struck
+    commonValue: 20,
+    firstCompleteBonus: 200 // £2 -- shortest, most common run
+  }
+];
+
+// Every type, tagged with its denomination. Coin ids are just type id +
+// year, so farthing type ids carry a "farthing_" prefix to stay distinct
+// from the penny type of the same monarch (and penny ids never change,
+// which keeps old saves valid).
+function tagTypes(types, denomId) {
+  types.forEach(function (t) { t.denom = denomId; });
+  return types;
+}
+var COIN_TYPES = tagTypes(PENNY_TYPES, "penny").concat(tagTypes(FARTHING_TYPES, "farthing"));
+
 var COINS = [];
-PENNY_TYPES.forEach(function (type) {
+COIN_TYPES.forEach(function (type) {
+  var denomCoinName = DENOMINATIONS_BY_ID[type.denom].coinName;
   for (var y = type.yearStart; y <= type.yearEnd; y++) {
     var kd = type.keyDates && type.keyDates[y];
     COINS.push({
       id: type.id + "_" + y,
       year: y,
-      name: (kd && kd.name) ? kd.name : (y + " " + (type.coinName || "Penny")),
+      name: (kd && kd.name) ? kd.name : (y + " " + (type.coinName || denomCoinName)),
       subtitle: (kd && kd.note) ? type.subtitle + " — " + kd.note : type.subtitle,
       group: type.id,
+      artGroup: type.artGroup || type.id,
+      denom: type.denom,
       rarity: kd ? kd.rarity : "Common",
       value: kd ? kd.value : type.commonValue
     });
@@ -197,6 +332,8 @@ PENNY_TYPES.forEach(function (type) {
         name: ec.name,
         subtitle: ec.subtitle,
         group: type.id,
+        artGroup: type.artGroup || type.id,
+        denom: type.denom,
         rarity: ec.rarity,
         value: ec.value
       });
@@ -207,6 +344,14 @@ PENNY_TYPES.forEach(function (type) {
 var COINS_BY_ID = {};
 COINS.forEach(function (c) { COINS_BY_ID[c.id] = c; });
 
-var COIN_GROUPS = PENNY_TYPES.map(function (t) {
-  return { id: t.id, label: t.label, firstCompleteBonus: t.firstCompleteBonus };
+var COIN_GROUPS = COIN_TYPES.map(function (t) {
+  return { id: t.id, label: t.label, denom: t.denom, firstCompleteBonus: t.firstCompleteBonus };
 });
+
+function coinsInDenom(denomId) {
+  return COINS.filter(function (c) { return c.denom === denomId; });
+}
+
+function groupsInDenom(denomId) {
+  return COIN_GROUPS.filter(function (g) { return g.denom === denomId; });
+}

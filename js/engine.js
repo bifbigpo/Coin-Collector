@@ -93,6 +93,45 @@ function claimedGroupCount() {
   return Object.keys(state.groupBonusesClaimed).length;
 }
 
+// A denomination is playable once its unlock upgrade is owned (pennies
+// need none). Locked denominations have no lots in the shop and no album
+// page, so their coins can't turn up at all.
+function isDenomUnlocked(denomId) {
+  var d = DENOMINATIONS_BY_ID[denomId];
+  return !!d && (!d.unlockUpgrade || isOwned(d.unlockUpgrade));
+}
+
+function unlockedDenoms() {
+  return DENOMINATIONS.filter(function (d) { return isDenomUnlocked(d.id); });
+}
+
+function unlockedCoins() {
+  return COINS.filter(function (c) { return isDenomUnlocked(c.denom); });
+}
+
+function unlockedGroups() {
+  return COIN_GROUPS.filter(function (g) { return isDenomUnlocked(g.denom); });
+}
+
+// Whether a lot shows in the shop at all: its denomination is unlocked,
+// and a one-time lot hasn't already been taken.
+function isLotAvailable(lot) {
+  if (!isDenomUnlocked(lot.denom)) return false;
+  if (lot.oneTime && state.oneTimeLotsBought[lot.id]) return false;
+  return true;
+}
+
+// Each completed set adds +5% to sale prices, up to this cap. The penny
+// album alone has exactly 10 sets, so the cap only starts to bite once
+// farthing (and later) sets are being completed too -- without it, every
+// new denomination would keep pushing sales further past full value.
+var SET_SALE_BONUS_PER_SET = 0.05;
+var SET_SALE_BONUS_CAP = 0.5;
+
+function setSaleBonus() {
+  return Math.min(SET_SALE_BONUS_CAP, SET_SALE_BONUS_PER_SET * claimedGroupCount());
+}
+
 function sellMultiplier() {
   // Selling one coin at a time to a dealer only ever gets you a cut of what
   // it's really worth -- 60% with no upgrades, 85% with Fair Market
@@ -100,8 +139,8 @@ function sellMultiplier() {
   var appraiserFraction = 0.6;
   if (isOwned("master_appraiser")) appraiserFraction = 1.0;
   else if (isOwned("fair_market_appraisal")) appraiserFraction = 0.85;
-  var groupMult = 1 + 0.05 * claimedGroupCount();
-  var fullMult = state.fullCollectionBonusClaimed ? 1.15 : 1;
+  var groupMult = 1 + setSaleBonus();
+  var fullMult = state.albumBonusClaimed.penny ? 1.15 : 1;
   return appraiserFraction * groupMult * fullMult;
 }
 
@@ -350,7 +389,7 @@ function lotCooldownRemaining(lotId) {
 
 function buyLot(lotId) {
   var lot = LOTS_BY_ID[lotId];
-  if (!lot) return false;
+  if (!lot || !isLotAvailable(lot)) return false;
   if (lot.cooldownMs && lotCooldownRemaining(lotId) > 0) return false;
   var cost = lotCost(lot);
   var count = lotCoinCount(lot);
@@ -389,6 +428,7 @@ function buyLot(lotId) {
     });
   }
   state.stats.lotsBought++;
+  if (lot.oneTime) state.oneTimeLotsBought[lotId] = true;
   if (lot.cooldownMs) state.lotCooldowns[lotId] = lot.cooldownMs;
   saveState();
   return true;
@@ -482,6 +522,10 @@ function collectionValueForGroup(groupId) {
       var owned = state.collection[c.id];
       return sum + coinSuggestedValue({ coinId: c.id, trueGrade: owned.trueGrade, graded: owned.graded });
     }, 0);
+}
+
+function collectionValueForDenom(denomId) {
+  return groupsInDenom(denomId).reduce(function (sum, g) { return sum + collectionValueForGroup(g.id); }, 0);
 }
 
 function totalCollectionValue() {
@@ -621,18 +665,27 @@ function checkCollectionBonuses() {
     var coinsInGroup = COINS.filter(function (c) { return c.group === group.id; });
     var complete = coinsInGroup.every(function (c) { return state.collection[c.id]; });
     if (complete) {
+      var bonusBefore = setSaleBonus();
       state.groupBonusesClaimed[group.id] = true;
       var reward = group.firstCompleteBonus;
       state.cash += reward;
-      queueToast(group.label + " collection complete! +" + formatMoney(reward) + " and a permanent +5% sale bonus.");
+      queueToast(group.label + " collection complete! +" + formatMoney(reward) +
+        (setSaleBonus() > bonusBefore
+          ? " and a permanent +5% sale bonus."
+          : " (set sale bonus already at its +" + Math.round(SET_SALE_BONUS_CAP * 100) + "% max)."));
     }
   });
 
-  if (!state.fullCollectionBonusClaimed && COINS.every(function (c) { return state.collection[c.id]; })) {
-    state.fullCollectionBonusClaimed = true;
-    state.cash += 100000;
-    queueToast("Penny album complete! +£1000.00 bonus, +15% sale bonus. More denominations coming soon...");
-  }
+  // One-off bonus per denomination for completing its whole album.
+  DENOMINATIONS.forEach(function (denom) {
+    if (state.albumBonusClaimed[denom.id]) return;
+    var coins = coinsInDenom(denom.id);
+    if (!coins.length || !coins.every(function (c) { return state.collection[c.id]; })) return;
+    state.albumBonusClaimed[denom.id] = true;
+    state.cash += denom.albumBonus;
+    queueToast(denom.coinName + " album complete! +" + formatMoney(denom.albumBonus) + " bonus" +
+      (denom.id === "penny" ? ", +15% sale bonus." : "."));
+  });
 }
 
 function isMessageDelivered(id) {

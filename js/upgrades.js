@@ -1,8 +1,18 @@
 // Upgrades: some are leveled (repeatable, scaling cost), some are one-time toggles.
 // A toggle may declare `requires: <id>` to stay locked until that other
-// upgrade is owned.
+// upgrade is owned. A toggle with `unlocksDenom` opens a new denomination
+// (see DENOMINATIONS in coins.js): its lots appear in the shop and its
+// album appears on the Collection tab.
 
 var UPGRADES = [
+  {
+    id: "farthing_album",
+    name: "Farthing Collection Book",
+    blurb: "A proper album for farthings, Victoria's Bun Head to the last wren of 1956. Unlocks farthing lots in the shop and a Farthings page in your collection.",
+    type: "toggle",
+    baseCost: 300,
+    unlocksDenom: "farthing"
+  },
   {
     id: "grade_tray_size",
     name: "Bigger Grading Tray",

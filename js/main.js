@@ -22,6 +22,7 @@ function handleClick(e) {
     case "close-messages": closeMessages(); break;
     case "read-message": openMessage(id); break;
     case "switch-tab": switchTab(id); break;
+    case "switch-album": switchAlbum(id); break;
   }
   renderAll();
 }

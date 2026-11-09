@@ -104,9 +104,16 @@ var STARTING_ESTATE = {
 // what you need. Pricier lots trade a wider draw for a `guaranteed` pick or
 // two from a rarity-filtered sub-pool, so the escalating cost buys a more
 // curated, less random outcome rather than just more coins.
+//
+// Every lot carries a `denom` (see DENOMINATIONS in coins.js): it only
+// shows in the shop once that denomination is unlocked, and lots never mix
+// denominations -- penny lots draw only pennies, farthing lots only
+// farthings. A `oneTime` lot can be bought once per save (tracked in
+// state.oneTimeLotsBought) and then disappears from the shop.
 var LOTS = [
   {
     id: "check_change",
+    denom: "penny",
     name: "Check Your Change",
     blurb: "Rifle through your own pocket change for modern coins. Free, five coins at a time.",
     isFree: true,
@@ -119,6 +126,7 @@ var LOTS = [
   },
   {
     id: "decimal_bag",
+    denom: "penny",
     name: "Decimal Charity Bag",
     blurb: "A tin of early decimal pennies from the local charity shop -- nothing newer than 1990.",
     baseCost: 100,
@@ -131,6 +139,7 @@ var LOTS = [
   },
   {
     id: "predecimal_bag",
+    denom: "penny",
     name: "Purchase pre-decimal bag from charity shop",
     blurb: "The same charity shop's other tin -- pre-decimal pennies that reach back well before 1971.",
     baseCost: 500,
@@ -141,6 +150,7 @@ var LOTS = [
   },
   {
     id: "ebay_bag",
+    denom: "penny",
     name: "eBay Bulk Bag",
     blurb: "\"100 x mixed pennies, unsearched!\" -- a bulk bag bought off eBay, with a few old survivors mixed in.",
     baseCost: 1000,
@@ -152,6 +162,7 @@ var LOTS = [
   },
   {
     id: "car_boot",
+    denom: "penny",
     name: "Car Boot Sale Box",
     blurb: "A shoebox of odds and ends bought off a folding table for a fiver -- worth a proper look through.",
     baseCost: 2000,
@@ -169,6 +180,7 @@ var LOTS = [
     // at ~£25.44. £20 prices it just under that, in line with the rest of
     // the shop always leaving some margin in the player's favor.
     id: "victorian_bag",
+    denom: "penny",
     name: "Victorian Penny Bag",
     blurb: "A dedicated bag of Victorian coppers -- Bun Head and Veiled Head pennies, nothing past 1901. Well-circulated stock -- don't expect better than Very Fine.",
     baseCost: 2000,
@@ -187,6 +199,7 @@ var LOTS = [
   },
   {
     id: "antique_lot",
+    denom: "penny",
     name: "Antique Dealer's Lot",
     blurb: "A dealer's tray of pre-decimal coppers, curated enough that at least one is worth having.",
     baseCost: 4000,
@@ -198,6 +211,7 @@ var LOTS = [
   },
   {
     id: "estate_hoard",
+    denom: "penny",
     name: "Estate Sale Hoard",
     blurb: "An entire collection, inherited and sold off in one lot -- vetted by someone who knew what they had.",
     baseCost: 6000,
@@ -206,6 +220,86 @@ var LOTS = [
     typeWeights: {
       victoria_bun: 6, victoria_veiled: 6, edward_vii: 6, george_v: 7, george_vi: 7,
       eii_predecimal: 5, eii_decimal_steel: 2, eii_decimal_bronze: 2, eii_decimal_new: 2, charles_iii: 1.5
+    }
+  },
+
+  // ---- Farthings (unlocked by the Farthing Collection Book upgrade) ----
+  {
+    // Free, once: the farthing equivalent of the starting jar, so buying
+    // the album immediately gives you something to sort. Guarantees one
+    // coin from the short, cheap Elizabeth II run so a first farthing set
+    // is always in reach.
+    id: "farthing_tin",
+    denom: "farthing",
+    name: "Grandpa's Farthing Tin",
+    blurb: "A tobacco tin of farthings Grandpa set aside, mostly from the 1940s and '50s. Free, once.",
+    isFree: true,
+    oneTime: true,
+    baseCost: 0,
+    coinsPerLot: 40,
+    gradeCap: BEGINNER_GRADES,
+    guaranteed: { count: 1, groups: ["farthing_eii"] },
+    typeWeights: {
+      farthing_george_vi: 45, farthing_eii: 30, farthing_george_v: 18,
+      farthing_edward_vii: 4, farthing_victoria_veiled: 2, farthing_victoria_bun: 1
+    }
+  },
+  {
+    id: "farthing_charity_tin",
+    denom: "farthing",
+    name: "Farthing Charity Tin",
+    blurb: "A charity shop's jar of well-worn 20th-century farthings, George V onwards.",
+    baseCost: 300, // £3 -- expected value ~£4.59
+    coinsPerLot: 40,
+    gradeCap: BEGINNER_GRADES,
+    typeWeights: {
+      farthing_george_v: 40, farthing_george_vi: 40, farthing_eii: 20
+    }
+  },
+  {
+    id: "farthing_old_tin",
+    denom: "farthing",
+    name: "Old Farthing Bag",
+    blurb: "Pre-war farthings from a house clearance -- Edward VII and George V, with a few late Victorians.",
+    baseCost: 500, // £5 -- expected value ~£6.55
+    coinsPerLot: 25,
+    gradeCap: GRADES_POOR_TO_VFINE,
+    typeWeights: {
+      farthing_edward_vii: 45, farthing_george_v: 35, farthing_victoria_veiled: 20
+    }
+  },
+  {
+    // Same wear tiers as the Victorian Penny Bag: nothing better than
+    // Very Fine. Counts must sum to coinsPerLot (20).
+    id: "victorian_farthing_bag",
+    denom: "farthing",
+    name: "Victorian Farthing Bag",
+    blurb: "Bun Head and Veiled Head farthings, nothing past 1901. Well-circulated -- don't expect better than Very Fine.",
+    baseCost: 1000, // £10 -- expected value ~£12.34 after its grade caps
+    coinsPerLot: 20,
+    gradeCapTiers: [
+      { count: 4, gradeCap: GRADES_POOR_TO_GOOD },
+      { count: 14, gradeCap: GRADES_POOR_TO_FINE },
+      { count: 2, gradeCap: GRADES_POOR_TO_VFINE }
+    ],
+    typeWeights: {
+      farthing_victoria_bun: 75, farthing_victoria_veiled: 25
+    }
+  },
+  {
+    // The only reliable route to the 1863 and 1895 Bun Head key dates
+    // (and the faint chance of the Edward VIII pattern): one guaranteed
+    // Rare-or-better farthing per tray.
+    id: "farthing_dealer_tray",
+    denom: "farthing",
+    name: "Dealer's Farthing Tray",
+    blurb: "A dealer's tray of farthings across every reign, with at least one proper key date in it.",
+    baseCost: 1800, // £18 -- expected value ~£25.19, mostly the guaranteed key date
+    coinsPerLot: 12,
+    guaranteed: { count: 1, minRarity: "Rare" },
+    typeWeights: {
+      farthing_victoria_bun: 10, farthing_victoria_veiled: 10, farthing_edward_vii: 10,
+      farthing_george_v: 10, farthing_george_vi: 10, farthing_eii: 8, farthing_edward_viii: 1
     }
   },
 ];

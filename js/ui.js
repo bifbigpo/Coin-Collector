@@ -54,6 +54,26 @@ try {
   if (TABS.indexOf(savedTab) !== -1) activeTab = savedTab;
 } catch (e) {}
 
+// Which denomination's album the Collection tab is showing. UI-only, same
+// as activeTab; falls back to the first unlocked album if the saved one
+// isn't unlocked (e.g. after a Reset).
+var ALBUM_KEY = "coinCollectorActiveAlbum";
+var activeAlbum = "penny";
+try {
+  var savedAlbum = localStorage.getItem(ALBUM_KEY);
+  if (savedAlbum && DENOMINATIONS_BY_ID[savedAlbum]) activeAlbum = savedAlbum;
+} catch (e) {}
+
+function currentAlbum() {
+  return isDenomUnlocked(activeAlbum) ? activeAlbum : "penny";
+}
+
+function switchAlbum(id) {
+  if (!isDenomUnlocked(id)) return;
+  activeAlbum = id;
+  try { localStorage.setItem(ALBUM_KEY, id); } catch (e) {}
+}
+
 function switchTab(id) {
   if (TABS.indexOf(id) === -1 || id === activeTab) return;
   activeTab = id;
@@ -71,8 +91,9 @@ function renderTabs() {
     view.hidden = view.getAttribute("data-view") !== activeTab;
   });
 
-  var owned = COINS.filter(function (c) { return state.collection[c.id]; }).length;
-  document.getElementById("tab-collection-count").textContent = owned + "/" + COINS.length;
+  var unlocked = unlockedCoins();
+  var owned = unlocked.filter(function (c) { return state.collection[c.id]; }).length;
+  document.getElementById("tab-collection-count").textContent = owned + "/" + unlocked.length;
 
   // Badge the Upgrades tab with how many upgrades you could buy right now,
   // so moving them off the main page doesn't hide that one is affordable.
@@ -181,9 +202,12 @@ function setMouseDown(isDown) {
 
 function renderHeader() {
   document.getElementById("cash-display").textContent = formatMoney(state.cash);
+  // Counts only cover unlocked albums, so buying a new collection book
+  // grows the totals rather than showing coins you can't get yet.
   var groups = claimedGroupCount();
-  var totalGroups = COIN_GROUPS.length;
-  var owned = Object.keys(state.collection).length;
+  var totalGroups = unlockedGroups().length;
+  var unlocked = unlockedCoins();
+  var owned = unlocked.filter(function (c) { return state.collection[c.id]; }).length;
   var skillLevel = gradingSkillLevel();
   var xp = state.gradingXp || 0;
   var nextTier = SKILL_TIERS[skillLevel + 1];
@@ -197,7 +221,7 @@ function renderHeader() {
   var skillPart = " · grading skill " + skillNum(skillLevel + 1) + "/" + skillNum(SKILL_TIERS.length) +
     (nextTier ? " (" + skillNum(xp) + "/" + skillNum(nextTier.xp) + " XP)" : " (max)");
   document.getElementById("stat-line").innerHTML =
-    num(owned) + " / " + num(COINS.length) + " coins collected · " +
+    num(owned) + " / " + num(unlocked.length) + " coins collected · " +
     num(groups) + " / " + num(totalGroups) + " sets complete · " +
     "collection value " + num(formatMoney(totalCollectionValue())) + " · " +
     "sale value " + num(Math.round(sellMultiplier() * 100) + "%") + skillPart;
@@ -206,7 +230,19 @@ function renderHeader() {
 function renderShop() {
   var container = document.getElementById("lot-list");
   container.innerHTML = "";
+  // With more than one album unlocked, lots are grouped under a heading
+  // per denomination (in LOTS order, which already lists them that way).
+  var showHeadings = unlockedDenoms().length > 1;
+  var lastDenom = null;
   LOTS.forEach(function (lot) {
+    if (!isLotAvailable(lot)) return;
+    if (showHeadings && lot.denom !== lastDenom) {
+      var heading = document.createElement("div");
+      heading.className = "shop-heading";
+      heading.textContent = DENOMINATIONS_BY_ID[lot.denom].label;
+      container.appendChild(heading);
+    }
+    lastDenom = lot.denom;
     var card = document.createElement("div");
     card.className = "card lot-card";
 
@@ -216,6 +252,7 @@ function renderShop() {
     var cooldownRemaining = lot.cooldownMs ? lotCooldownRemaining(lot.id) : 0;
     var buyLabel = cooldownRemaining > 0
       ? "Available in " + Math.ceil(cooldownRemaining / 1000) + "s"
+      : lot.oneTime && lot.isFree ? "Take it"
       : "Buy for " + (lot.isFree ? "Free" : formatMoney(cost));
     var buyDisabled = cooldownRemaining > 0 || full || state.cash < cost;
 
@@ -446,7 +483,32 @@ function groupQualityHTML(groupId) {
 function renderCollection() {
   var container = document.getElementById("collection-groups");
   container.innerHTML = "";
-  COIN_GROUPS.forEach(function (group) {
+  var album = currentAlbum();
+
+  // One sub-tab per unlocked album; hidden while pennies are the only one.
+  var albumTabs = document.getElementById("album-tabs");
+  var denoms = unlockedDenoms();
+  albumTabs.hidden = denoms.length < 2;
+  albumTabs.innerHTML = denoms.map(function (d) {
+    var coins = coinsInDenom(d.id);
+    var have = coins.filter(function (c) { return state.collection[c.id]; }).length;
+    return '<button class="btn btn-small' + (d.id === album ? " btn-primary" : "") +
+      '" data-action="switch-album" data-id="' + d.id + '">' + d.label +
+      ' <span class="tab-count">' + have + "/" + coins.length + "</span></button>";
+  }).join("");
+
+  var albumCoins = coinsInDenom(album);
+  var albumOwned = albumCoins.filter(function (c) { return state.collection[c.id]; }).length;
+  var summary = document.createElement("div");
+  summary.className = "album-summary";
+  summary.innerHTML = DENOMINATIONS_BY_ID[album].label + ": " + albumOwned + " / " + albumCoins.length +
+    " coins · value " + formatMoney(collectionValueForDenom(album)) +
+    (state.albumBonusClaimed[album]
+      ? ' <span class="complete-badge">Album complete</span>'
+      : " · complete the album for +" + formatMoney(DENOMINATIONS_BY_ID[album].albumBonus));
+  container.appendChild(summary);
+
+  groupsInDenom(album).forEach(function (group) {
     var coinsInGroup = COINS.filter(function (c) { return c.group === group.id; })
       .slice()
       .sort(function (a, b) { return a.year - b.year; });
